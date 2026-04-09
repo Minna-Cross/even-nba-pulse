@@ -145,17 +145,6 @@ Some community reports note packaging friction when Vite outputs nested files un
 
 Direct browser fetches to the NBA CDN can fail in some environments. This scaffold now uses a local Vite proxy in development and includes a tiny Node proxy example in `proxy/`.
 
-## Future Improvements (Wishlist)
-
-- Team filtering
-- Favorite team auto-focus
-- Score change alerts
-- Shot chart (image-based mode)
-- Multi-game dashboard view
-- Date selector (today / yesterday / tomorrow)
-- Clutch mode (last N minutes only)
-- Team logos via small image overlays
-
 ## If `Failed to fetch`
 
 That usually means the browser/WebView could not fetch the NBA CDN directly.
