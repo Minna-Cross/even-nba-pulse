@@ -1,0 +1,43 @@
+{
+  "game": {
+    "gameId": "0022500124",
+    "actions": [
+      {
+        "actionNumber": 4,
+        "orderNumber": 40,
+        "period": 1,
+        "clock": "PT10M53.00S",
+        "description": "Stephen Curry makes 26-foot three point jumper",
+        "scoreAway": 3,
+        "scoreHome": 5
+      },
+      {
+        "actionNumber": 5,
+        "orderNumber": 50,
+        "period": 1,
+        "clock": "PT10M20.00S",
+        "description": "LeBron James turnover",
+        "scoreAway": 3,
+        "scoreHome": 5
+      },
+      {
+        "actionNumber": 150,
+        "orderNumber": 1500,
+        "period": 3,
+        "clock": "PT5M11.00S",
+        "description": "Anthony Davis makes 12-foot jumper",
+        "scoreAway": 84,
+        "scoreHome": 87
+      },
+      {
+        "actionNumber": 151,
+        "orderNumber": 1510,
+        "period": 3,
+        "clock": "PT4M59.00S",
+        "description": "Klay Thompson misses 24-foot three point jumper",
+        "scoreAway": 84,
+        "scoreHome": 87
+      }
+    ]
+  }
+}

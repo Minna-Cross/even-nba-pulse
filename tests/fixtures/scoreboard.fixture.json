@@ -1,0 +1,49 @@
+{
+  "scoreboard": {
+    "gameDate": "2026-04-08",
+    "games": [
+      {
+        "gameId": "0022500123",
+        "gameStatus": 1,
+        "gameStatusText": "7:30 pm ET",
+        "period": 0,
+        "gameClock": "",
+        "homeTeam": {
+          "teamId": 1610612738,
+          "teamTricode": "BOS",
+          "teamCity": "Boston",
+          "teamName": "Celtics",
+          "score": 0
+        },
+        "awayTeam": {
+          "teamId": 1610612748,
+          "teamTricode": "MIA",
+          "teamCity": "Miami",
+          "teamName": "Heat",
+          "score": 0
+        }
+      },
+      {
+        "gameId": "0022500124",
+        "gameStatus": 2,
+        "gameStatusText": "Q3 05:11",
+        "period": 3,
+        "gameClock": "PT5M11.00S",
+        "homeTeam": {
+          "teamId": 1610612744,
+          "teamTricode": "GSW",
+          "teamCity": "Golden State",
+          "teamName": "Warriors",
+          "score": 87
+        },
+        "awayTeam": {
+          "teamId": 1610612747,
+          "teamTricode": "LAL",
+          "teamCity": "Los Angeles",
+          "teamName": "Lakers",
+          "score": 84
+        }
+      }
+    ]
+  }
+}

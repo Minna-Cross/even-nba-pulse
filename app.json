@@ -1,0 +1,22 @@
+{
+  "package_id": "com.openai.nbapulse",
+  "edition": "202601",
+  "name": "NBA Pulse",
+  "version": "0.1.0",
+  "min_app_version": "2.0.0",
+  "min_sdk_version": "0.0.9",
+  "entrypoint": "index.html",
+  "description": "Live NBA event timeline for Even G2 smart glasses.",
+  "tagline": "Scores, game state, and a descending or ascending play timeline.",
+  "author": "OpenAI",
+  "supported_languages": ["en"],
+  "permissions": [
+    {
+      "name": "network",
+      "desc": "Fetches live NBA scoreboard and play-by-play data from NBA CDN endpoints.",
+      "whitelist": [
+        "https://cdn.nba.com"
+      ]
+    }
+  ]
+}

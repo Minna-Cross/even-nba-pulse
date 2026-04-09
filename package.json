@@ -1,0 +1,21 @@
+{
+  "name": "even-nba-pulse",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "test": "node --test",
+    "qr": "evenhub qr --http --port 5173",
+    "pack": "npm run build && evenhub pack app.json dist -o even-nba-pulse.ehpk --check"
+  },
+  "dependencies": {
+    "@evenrealities/even_hub_sdk": "^0.0.9"
+  },
+  "devDependencies": {
+    "@evenrealities/evenhub-cli": "^0.1.10",
+    "vite": "^7.3.1"
+  }
+}
