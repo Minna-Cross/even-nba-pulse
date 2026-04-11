@@ -122,7 +122,6 @@ export function createApp(dom) {
     const eventType = textEvent?.eventType ?? sysEvent?.eventType;
 
     switch (eventType) {
-      case undefined:
       case EVENT.CLICK:
         await nextGame();
         break;
@@ -150,14 +149,23 @@ export function createApp(dom) {
 
   function bindDomActions() {
     dom.refreshButton.addEventListener('click', () => {
-      refreshAll({ keepPage: true, announceErrors: true });
+      runUserAction(() => refreshAll({ keepPage: true, announceErrors: true }));
     });
     dom.nextGameButton.addEventListener('click', () => {
-      nextGame();
+      runUserAction(nextGame);
     });
     dom.toggleSortButton.addEventListener('click', () => {
       toggleSort();
     });
+  }
+
+  function runUserAction(action) {
+    Promise.resolve()
+      .then(() => action())
+      .catch((error) => {
+        state.error = error instanceof Error ? error.message : String(error);
+        render();
+      });
   }
 
   function render() {
