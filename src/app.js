@@ -24,7 +24,9 @@ export function createApp(dom) {
     state.mockBridge = bridgeResult.mockBridge;
 
     bindDomActions();
-    unsubscribe = subscribeToEvenEvents(state.bridge, handleEvenEvent);
+    unsubscribe = subscribeToEvenEvents(state.bridge, (event) => {
+      runUserAction(() => handleEvenEvent(event));
+    });
 
     await refreshAll({ keepPage: false, announceErrors: true });
     state.refreshTimer = window.setInterval(() => {
