@@ -8,7 +8,7 @@
   "entrypoint": "index.html",
   "description": "Live NBA event timeline for Even G2 smart glasses.",
   "tagline": "Scores, game state, and a descending or ascending play timeline.",
-  "author": "OpenAI",
+  "author": "Minna-Cross, OpenAI",
   "supported_languages": ["en"],
   "permissions": [
     {
