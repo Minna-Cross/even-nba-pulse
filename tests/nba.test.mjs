@@ -5,6 +5,8 @@ import playFixture from './fixtures/playbyplay.fixture.json' with { type: 'json'
 
 import {
   chooseDefaultGameIndex,
+  fetchPlayByPlay,
+  fetchScoreboard,
   gameHasStarted,
   normalizeActions,
   normalizeGames
@@ -62,4 +64,52 @@ test('formatPlayLine produces compact timeline text', () => {
   assert.match(line, /Q3 5:11/);
   assert.match(line, /84-87/);
   assert.match(line, /Anthony Davis/);
+});
+
+test('fetchScoreboard maps invalid URL pattern errors to config guidance', async () => {
+  const fetchImpl = async () => {
+    throw new Error('The string did not match the expected pattern.');
+  };
+
+  await assert.rejects(
+    () => fetchScoreboard(fetchImpl),
+    /VITE_NBA_API_BASE to a full URL/
+  );
+});
+
+test('fetchPlayByPlay maps TypeError to network/cors guidance', async () => {
+  const fetchImpl = async () => {
+    throw new TypeError('fetch failed');
+  };
+
+  await assert.rejects(
+    () => fetchPlayByPlay('123', fetchImpl),
+    /NBA feed unavailable \(network\/CORS\)/
+  );
+});
+
+test('fetchScoreboard treats 404 as no-games day instead of hard error', async () => {
+  const fetchImpl = async () => ({
+    ok: false,
+    status: 404,
+    async json() {
+      return {};
+    }
+  });
+
+  const scoreboard = await fetchScoreboard(fetchImpl);
+  assert.deepEqual(scoreboard, { scoreboard: { games: [] } });
+});
+
+test('fetchPlayByPlay treats 404 as empty timeline instead of hard error', async () => {
+  const fetchImpl = async () => ({
+    ok: false,
+    status: 404,
+    async json() {
+      return {};
+    }
+  });
+
+  const play = await fetchPlayByPlay('missing-game', fetchImpl);
+  assert.deepEqual(play, { game: { actions: [] } });
 });

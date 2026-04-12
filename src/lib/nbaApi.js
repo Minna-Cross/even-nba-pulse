@@ -1,10 +1,17 @@
 const API_BASE = (import.meta.env?.VITE_NBA_API_BASE || '/api/nba').replace(/\/$/, '');
 
 function asNetworkErrorMessage(error) {
+  const message = error instanceof Error ? error.message : String(error);
+
   if (error instanceof TypeError) {
     return 'NBA feed unavailable (network/CORS). Use the local proxy in dev or set VITE_NBA_API_BASE for production.';
   }
-  return error instanceof Error ? error.message : String(error);
+
+  if (/did not match the expected pattern/i.test(message)) {
+    return 'NBA feed URL is invalid for this environment. Configure VITE_NBA_API_BASE to a full URL (for example: https://your-host/api/nba).';
+  }
+
+  return message;
 }
 
 export async function fetchScoreboard(fetchImpl = fetch) {
@@ -12,6 +19,10 @@ export async function fetchScoreboard(fetchImpl = fetch) {
     const response = await fetchImpl(`${API_BASE}/scoreboard`, {
       cache: 'no-store'
     });
+
+    if (response.status === 404) {
+      return { scoreboard: { games: [] } };
+    }
 
     if (!response.ok) {
       throw new Error(`Scoreboard request failed (${response.status})`);
@@ -29,6 +40,10 @@ export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
       `${API_BASE}/playbyplay/${gameId}`,
       { cache: 'no-store' }
     );
+
+    if (response.status === 404) {
+      return { game: { actions: [] } };
+    }
 
     if (!response.ok) {
       throw new Error(`Play-by-play request failed (${response.status})`);

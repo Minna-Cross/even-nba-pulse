@@ -25,58 +25,68 @@ export async function connectEvenBridge() {
 
 export async function pushGlassesView(bridge, started, view) {
   if (!bridge || bridge.__mock) return started;
+  const safeView = sanitizeBridgeView(view);
 
   if (!started) {
-    const result = await bridge.createStartUpPageContainer({
+    const payload = {
       containerTotalNum: 4,
       textObject: [
-        visibleContainer(CONTAINERS.header, 0, 0, DISPLAY.width, 58, view.header, 0),
-        visibleContainer(CONTAINERS.body, 0, 58, DISPLAY.width, 198, view.body, 0),
-        visibleContainer(CONTAINERS.footer, 0, 256, DISPLAY.width, 32, view.footer, 0),
+        visibleContainer(CONTAINERS.header, 0, 0, DISPLAY.width, 58, safeView.header, 0),
+        visibleContainer(CONTAINERS.body, 0, 58, DISPLAY.width, 198, safeView.body, 0),
+        visibleContainer(CONTAINERS.footer, 0, 256, DISPLAY.width, 32, safeView.footer, 0),
         captureContainer()
       ]
-    });
+    };
+    const result = await bridge.createStartUpPageContainer(payload);
 
     if (result !== 0) {
-      throw new Error(`createStartUpPageContainer failed with code ${result}`);
+      throw new Error(
+        `createStartUpPageContainer failed with code ${result}. ` +
+          'Try shortening text content and confirm container geometry matches your device profile.'
+      );
     }
 
     return true;
   }
 
-  await bridge.textContainerUpgrade({
-    containerID: CONTAINERS.header.id,
-    containerName: CONTAINERS.header.name,
-    contentOffset: 0,
-    contentLength: 2000,
-    content: view.header
-  });
-
-  await bridge.textContainerUpgrade({
-    containerID: CONTAINERS.body.id,
-    containerName: CONTAINERS.body.name,
-    contentOffset: 0,
-    contentLength: 2000,
-    content: view.body
-  });
-
-  await bridge.textContainerUpgrade({
-    containerID: CONTAINERS.footer.id,
-    containerName: CONTAINERS.footer.name,
-    contentOffset: 0,
-    contentLength: 2000,
-    content: view.footer
-  });
+  await upgradeTextContainer(bridge, CONTAINERS.header, safeView.header);
+  await upgradeTextContainer(bridge, CONTAINERS.body, safeView.body);
+  await upgradeTextContainer(bridge, CONTAINERS.footer, safeView.footer);
 
   return true;
 }
 
-export function subscribeToEvenEvents(bridge, onEvent) {
-  if (!bridge || bridge.__mock || typeof bridge.onEvenHubEvent !== 'function') {
-    return () => {};
-  }
+async function upgradeTextContainer(bridge, container, content) {
+  const result = await bridge.textContainerUpgrade({
+    containerID: container.id,
+    containerName: container.name,
+    contentOffset: 0,
+    contentLength: 2000,
+    content
+  });
 
-  return bridge.onEvenHubEvent(onEvent);
+  if (typeof result === 'number' && result !== 0) {
+    throw new Error(`textContainerUpgrade failed for ${container.name} with code ${result}`);
+  }
+}
+
+function sanitizeBridgeView(view) {
+  return {
+    header: sanitizeBridgeText(view.header, 400),
+    body: sanitizeBridgeText(view.body, 1500),
+    footer: sanitizeBridgeText(view.footer, 220)
+  };
+}
+
+function sanitizeBridgeText(text, maxLength) {
+  const safeText = String(text ?? '')
+    .replace(/•/g, '-')
+    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '')
+    .trim();
+
+  if (safeText.length <= maxLength) return safeText;
+
+  return `${safeText.slice(0, Math.max(0, maxLength - 1))}…`;
 }
 
 function visibleContainer(container, x, y, width, height, content, capture) {
@@ -124,4 +134,12 @@ function createMockBridge() {
       return () => {};
     }
   };
+}
+
+export function subscribeToEvenEvents(bridge, onEvent) {
+  if (!bridge || bridge.__mock || typeof bridge.onEvenHubEvent !== 'function') {
+    return () => {};
+  }
+
+  return bridge.onEvenHubEvent(onEvent);
 }
