@@ -15,10 +15,22 @@ function asNetworkErrorMessage(error) {
 }
 
 export async function fetchScoreboard(fetchImpl = fetch) {
+  return fetchScoreboardByPath('scoreboard', fetchImpl);
+}
+
+export async function fetchScoreboardForDate(dateKey, fetchImpl = fetch) {
+  return fetchScoreboardByPath(`scoreboard/${dateKey}`, fetchImpl);
+}
+
+async function fetchScoreboardByPath(path, fetchImpl = fetch) {
   try {
-    const response = await fetchImpl(`${API_BASE}/scoreboard`, {
+    const response = await fetchImpl(`${API_BASE}/${path}`, {
       cache: 'no-store'
     });
+
+    if (response.status === 404) {
+      return { scoreboard: { games: [] } };
+    }
 
     if (!response.ok) {
       throw new Error(`Scoreboard request failed (${response.status})`);
@@ -37,6 +49,10 @@ export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
       { cache: 'no-store' }
     );
 
+    if (response.status === 404) {
+      return { game: { actions: [] } };
+    }
+
     if (!response.ok) {
       throw new Error(`Play-by-play request failed (${response.status})`);
     }
@@ -49,8 +65,10 @@ export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
 
 export function normalizeGames(scoreboardJson) {
   const games = scoreboardJson?.scoreboard?.games ?? [];
+  const gameDate = scoreboardJson?.scoreboard?.gameDate || '';
 
   return games.map((game) => ({
+    gameDate,
     gameId: String(game.gameId),
     gameStatus: Number(game.gameStatus ?? 0),
     statusText: game.gameStatusText || game.gameEt || 'Status unavailable',
@@ -106,4 +124,27 @@ export function chooseDefaultGameIndex(games) {
 
 export function gameHasStarted(game) {
   return game && game.gameStatus !== 1;
+}
+
+export async function fetchUpcomingGames(daysAhead = 3, fetchImpl = fetch) {
+  const upcoming = [];
+
+  for (let offset = 1; offset <= daysAhead; offset += 1) {
+    const dateKey = formatDateKey(offset);
+    const scoreboard = await fetchScoreboardForDate(dateKey, fetchImpl);
+    const games = normalizeGames(scoreboard).filter((game) => game.gameStatus === 1);
+
+    for (const game of games) {
+      upcoming.push(game);
+      if (upcoming.length >= 4) return upcoming;
+    }
+  }
+
+  return upcoming;
+}
+
+function formatDateKey(offsetDays) {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + offsetDays);
+  return `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}`;
 }

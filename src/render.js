@@ -18,6 +18,12 @@ export function buildView(state) {
     if (state.error) {
       bodyLines.push('Live feed unavailable.');
       bodyLines.push('Check proxy / network.');
+    } else if (state.upcomingGames.length) {
+      bodyLines.push('No games live right now.');
+      bodyLines.push('Next scheduled matchups:');
+      for (const upcoming of state.upcomingGames.slice(0, 3)) {
+        bodyLines.push(formatUpcomingLine(upcoming));
+      }
     } else {
       bodyLines.push('No NBA games found in the live scoreboard feed.');
       bodyLines.push('Refresh later or check again on a game day.');

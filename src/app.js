@@ -1,5 +1,5 @@
 import { REFRESH_INTERVAL_MS } from './lib/constants.js';
-import { fetchPlayByPlay, fetchScoreboard, normalizeActions, normalizeGames, chooseDefaultGameIndex, gameHasStarted } from './lib/nbaApi.js';
+import { fetchPlayByPlay, fetchScoreboard, fetchUpcomingGames, normalizeActions, normalizeGames, chooseDefaultGameIndex, gameHasStarted } from './lib/nbaApi.js';
 import { buildView, updateDom } from './render.js';
 import { connectEvenBridge, pushGlassesView, subscribeToEvenEvents } from './evenBridge.js';
 import { createInitialState, selectedGame } from './state.js';
@@ -13,6 +13,12 @@ const EVENT = {
   FOREGROUND_EXIT: 5,
   ABNORMAL_EXIT: 6
 };
+
+export function getEvenEventType(event) {
+  const textEvent = event?.textEvent;
+  const sysEvent = event?.sysEvent;
+  return textEvent?.eventType ?? sysEvent?.eventType;
+}
 
 export function createApp(dom) {
   const state = createInitialState();
@@ -51,7 +57,9 @@ export function createApp(dom) {
         state.selectedGameIndex = -1;
         state.plays = [];
         state.pageIndex = 0;
+        state.upcomingGames = await fetchUpcomingGames(5);
       } else {
+        state.upcomingGames = [];
         const selectedIndex = resolveSelectedGameIndex(games);
         state.selectedGameIndex = selectedIndex;
         state.selectedGameId = games[selectedIndex].gameId;
@@ -119,9 +127,9 @@ export function createApp(dom) {
   }
 
   async function handleEvenEvent(event) {
-    const textEvent = event?.textEvent;
-    const sysEvent = event?.sysEvent;
-    const eventType = textEvent?.eventType ?? sysEvent?.eventType;
+    const eventType = getEvenEventType(event);
+
+    if (eventType == null) return;
 
     switch (eventType) {
       case EVENT.CLICK:
@@ -191,5 +199,5 @@ export function createApp(dom) {
     unsubscribe();
   }
 
-  return { init, destroy, state };
+  return { init, destroy, state, handleEvenEvent };
 }
