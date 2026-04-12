@@ -5,6 +5,8 @@ import playFixture from './fixtures/playbyplay.fixture.json' with { type: 'json'
 
 import {
   chooseDefaultGameIndex,
+  fetchPlayByPlay,
+  fetchScoreboard,
   gameHasStarted,
   normalizeActions,
   normalizeGames
@@ -62,4 +64,26 @@ test('formatPlayLine produces compact timeline text', () => {
   assert.match(line, /Q3 5:11/);
   assert.match(line, /84-87/);
   assert.match(line, /Anthony Davis/);
+});
+
+test('fetchScoreboard maps invalid URL pattern errors to config guidance', async () => {
+  const fetchImpl = async () => {
+    throw new Error('The string did not match the expected pattern.');
+  };
+
+  await assert.rejects(
+    () => fetchScoreboard(fetchImpl),
+    /VITE_NBA_API_BASE to a full URL/
+  );
+});
+
+test('fetchPlayByPlay maps TypeError to network/cors guidance', async () => {
+  const fetchImpl = async () => {
+    throw new TypeError('fetch failed');
+  };
+
+  await assert.rejects(
+    () => fetchPlayByPlay('123', fetchImpl),
+    /NBA feed unavailable \(network\/CORS\)/
+  );
 });
