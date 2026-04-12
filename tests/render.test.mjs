@@ -3,22 +3,24 @@ import assert from 'node:assert/strict';
 
 import { buildView } from '../src/render.js';
 import { createInitialState } from '../src/state.js';
+import { SPLASH_DURATION_MS } from '../src/lib/constants.js';
 
-test('buildView shows upcoming schedule lines when no live game is selected', () => {
+test('buildView returns splash content during initial splash window', () => {
   const state = createInitialState();
-  state.games = [];
-  state.upcomingGames = [
-    {
-      gameDate: '2026-04-12',
-      startTimeUtc: '2026-04-12T20:00:00Z',
-      statusText: '4:00 PM ET',
-      away: { code: 'BOS' },
-      home: { code: 'NYK' }
-    }
-  ];
+  state.mockBridge = false;
 
   const view = buildView(state);
-  assert.match(view.dom.timeline, /Upcoming schedule/);
-  assert.match(view.dom.timeline, /BOS @ NYK/);
-  assert.match(view.dom.timeline, /Times shown in your local timezone/);
+
+  assert.match(view.glasses.header, /NBA PULSE/);
+  assert.match(view.glasses.body, /Loading live scoreboard/);
+});
+
+test('buildView exits splash mode after splash window', () => {
+  const state = createInitialState();
+  state.launchedAt = Date.now() - SPLASH_DURATION_MS - 1;
+
+  const view = buildView(state);
+
+  assert.equal(view.dom.selectedGame, 'No game selected');
+  assert.match(view.glasses.header, /NBA Pulse/);
 });

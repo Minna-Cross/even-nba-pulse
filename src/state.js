@@ -3,6 +3,7 @@ import { paginate, sortPlays } from './lib/formatters.js';
 
 export function createInitialState() {
   return {
+    launchedAt: Date.now(),
     bridge: null,
     mockBridge: true,
     started: false,

@@ -5,7 +5,8 @@ import playFixture from './fixtures/playbyplay.fixture.json' with { type: 'json'
 
 import {
   chooseDefaultGameIndex,
-  fetchUpcomingGames,
+  fetchPlayByPlay,
+  fetchScoreboard,
   gameHasStarted,
   normalizeActions,
   normalizeGames
@@ -65,30 +66,24 @@ test('formatPlayLine produces compact timeline text', () => {
   assert.match(line, /Anthony Davis/);
 });
 
-test('fetchUpcomingGames includes today and sorts by start time', async () => {
-  const fetchImpl = async () => ({
-    ok: true,
-    status: 200,
-    async json() {
-      return {
-        events: [
-          {
-            id: 'late',
-            date: '2026-04-12T23:30:00Z',
-            competitions: [{ status: { type: { state: 'pre', shortDetail: '7:30 PM ET' } }, competitors: [] }]
-          },
-          {
-            id: 'early',
-            date: '2026-04-12T20:00:00Z',
-            competitions: [{ status: { type: { state: 'pre', shortDetail: '4:00 PM ET' } }, competitors: [] }]
-          }
-        ]
-      };
-    }
-  });
+test('fetchScoreboard maps invalid URL pattern errors to config guidance', async () => {
+  const fetchImpl = async () => {
+    throw new Error('The string did not match the expected pattern.');
+  };
 
-  const games = await fetchUpcomingGames({ daysAhead: 0, includeToday: true, fetchImpl });
-  assert.equal(games.length, 2);
-  assert.equal(games[0].gameId, 'early');
-  assert.equal(games[1].gameId, 'late');
+  await assert.rejects(
+    () => fetchScoreboard(fetchImpl),
+    /VITE_NBA_API_BASE to a full URL/
+  );
+});
+
+test('fetchPlayByPlay maps TypeError to network/cors guidance', async () => {
+  const fetchImpl = async () => {
+    throw new TypeError('fetch failed');
+  };
+
+  await assert.rejects(
+    () => fetchPlayByPlay('123', fetchImpl),
+    /NBA feed unavailable \(network\/CORS\)/
+  );
 });

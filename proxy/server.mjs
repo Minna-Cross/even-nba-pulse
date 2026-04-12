@@ -37,10 +37,10 @@ const server = http.createServer((req, res) => {
     return proxyFetch('https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json', res);
   }
 
-  const scheduleMatch = req.url.match(/^\/nba\/schedule\/(\d{8})$/);
-  if (scheduleMatch) {
-    const dateKey = scheduleMatch[1];
-    return proxyFetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${dateKey}`, res);
+  const scoreboardByDateMatch = req.url.match(/^\/nba\/scoreboard\/(\d{8})$/);
+  if (scoreboardByDateMatch) {
+    const gameDate = scoreboardByDateMatch[1];
+    return proxyFetch(`https://cdn.nba.com/static/json/liveData/scoreboard/scoreboard_${gameDate}.json`, res);
   }
 
   const playMatch = req.url.match(/^\/nba\/playbyplay\/([^/]+)$/);

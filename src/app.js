@@ -14,6 +14,12 @@ const EVENT = {
   ABNORMAL_EXIT: 6
 };
 
+export function getEvenEventType(event) {
+  const textEvent = event?.textEvent;
+  const sysEvent = event?.sysEvent;
+  return textEvent?.eventType ?? sysEvent?.eventType;
+}
+
 export function createApp(dom) {
   const state = createInitialState();
   let unsubscribe = () => {};
@@ -52,7 +58,7 @@ export function createApp(dom) {
         state.selectedGameIndex = -1;
         state.plays = [];
         state.pageIndex = 0;
-        state.upcomingGames = await fetchUpcomingGames({ daysAhead: 5, includeToday: true });
+        state.upcomingGames = await fetchUpcomingGames(5);
       } else {
         state.upcomingGames = [];
         const selectedIndex = resolveSelectedGameIndex(games);
@@ -122,9 +128,8 @@ export function createApp(dom) {
   }
 
   async function handleEvenEvent(event) {
-    const textEvent = event?.textEvent;
-    const sysEvent = event?.sysEvent;
-    const eventType = textEvent?.eventType ?? sysEvent?.eventType;
+    const eventType = getEvenEventType(event);
+
     if (eventType == null) return;
 
     switch (eventType) {
@@ -195,5 +200,5 @@ export function createApp(dom) {
     unsubscribe();
   }
 
-  return { init, destroy, state };
+  return { init, destroy, state, handleEvenEvent };
 }
