@@ -131,7 +131,13 @@ export async function fetchUpcomingGames(daysAhead = 3, fetchImpl = fetch) {
 
   for (let offset = 1; offset <= daysAhead; offset += 1) {
     const dateKey = formatDateKey(offset);
-    const scoreboard = await fetchScoreboardForDate(dateKey, fetchImpl);
+    let scoreboard = null;
+    try {
+      scoreboard = await fetchScoreboardForDate(dateKey, fetchImpl);
+    } catch {
+      continue;
+    }
+
     const games = normalizeGames(scoreboard).filter((game) => game.gameStatus === 1);
 
     for (const game of games) {

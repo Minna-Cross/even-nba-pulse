@@ -168,3 +168,38 @@ test('fetchUpcomingGames returns upcoming scheduled games from date scoreboards'
   assert.equal(games[0].away.code, 'ATL');
   assert.equal(games[1].home.code, 'BOS');
 });
+
+test('fetchUpcomingGames skips failed date fetches instead of throwing', async () => {
+  let callCount = 0;
+  const fetchImpl = async () => {
+    callCount += 1;
+    if (callCount === 1) {
+      throw new TypeError('network down');
+    }
+
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          scoreboard: {
+            gameDate: '2026-04-14',
+            games: [
+              {
+                gameId: 'g300',
+                gameStatus: 1,
+                gameStatusText: '9:00 pm ET',
+                homeTeam: { teamTricode: 'DEN', score: 0 },
+                awayTeam: { teamTricode: 'PHX', score: 0 }
+              }
+            ]
+          }
+        };
+      }
+    };
+  };
+
+  const games = await fetchUpcomingGames(2, fetchImpl);
+  assert.equal(games.length, 1);
+  assert.equal(games[0].away.code, 'PHX');
+});

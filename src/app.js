@@ -57,7 +57,11 @@ export function createApp(dom) {
         state.selectedGameIndex = -1;
         state.plays = [];
         state.pageIndex = 0;
-        state.upcomingGames = await fetchUpcomingGames(5);
+        try {
+          state.upcomingGames = await fetchUpcomingGames(5);
+        } catch {
+          state.upcomingGames = [];
+        }
       } else {
         state.upcomingGames = [];
         const selectedIndex = resolveSelectedGameIndex(games);
