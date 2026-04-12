@@ -72,13 +72,6 @@ export function buildView(state) {
   };
 }
 
-function formatUpcomingLine(game) {
-  const date = game.gameDate
-    ? new Date(`${game.gameDate}T00:00:00Z`).toLocaleDateString([], { month: 'short', day: 'numeric' })
-    : 'Soon';
-  return `${date}: ${game.away.code} @ ${game.home.code} ${game.statusText}`;
-}
-
 function shouldShowSplash(state) {
   return !state.error && Date.now() - state.launchedAt < SPLASH_DURATION_MS;
 }
