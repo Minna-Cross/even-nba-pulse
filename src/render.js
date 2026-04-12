@@ -1,7 +1,12 @@
 import { formatGameLabel, formatGameMeta, formatPageStatus, formatPlayLine } from './lib/formatters.js';
+import { SPLASH_DURATION_MS } from './lib/constants.js';
 import { pagedPlays, selectedGame } from './state.js';
 
 export function buildView(state) {
+  if (shouldShowSplash(state)) {
+    return buildSplashView(state);
+  }
+
   const game = selectedGame(state);
   const paged = pagedPlays(state);
   const headerLines = [];
@@ -57,6 +62,30 @@ export function buildView(state) {
       header: headerLines.join('\n'),
       body: bodyLines.join('\n'),
       footer: footerLines.join('\n')
+    }
+  };
+}
+
+function shouldShowSplash(state) {
+  return !state.error && Date.now() - state.launchedAt < SPLASH_DURATION_MS;
+}
+
+function buildSplashView(state) {
+  const connection = state.mockBridge ? 'Preview mode' : 'Even bridge online';
+
+  return {
+    dom: {
+      connectionStatus: state.mockBridge ? 'Browser preview (mock bridge)' : 'Connected to Even bridge',
+      selectedGame: 'NBA Pulse',
+      selectedMeta: 'Live scores + timeline',
+      timeline: '🏀 Welcome to NBA Pulse\nLoading the live scoreboard…',
+      pageStatus: 'tap next • dbl sort • scroll pages',
+      errorStatus: state.error || ''
+    },
+    glasses: {
+      header: 'NBA PULSE\nGame Night Mode',
+      body: `Connected\n${connection}\n\nLoading live scoreboard...`,
+      footer: 'tap to begin'
     }
   };
 }
