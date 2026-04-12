@@ -24,6 +24,7 @@ export function buildView(state) {
       for (const upcoming of state.upcomingGames.slice(0, 3)) {
         bodyLines.push(formatUpcomingLine(upcoming));
       }
+      bodyLines.push('Times shown in ET.');
     } else {
       bodyLines.push('No NBA games found in the live scoreboard feed.');
       bodyLines.push('Refresh later or check again on a game day.');
@@ -73,15 +74,53 @@ export function buildView(state) {
 }
 
 function formatUpcomingLine(game) {
-  const date = game.gameDate
-    ? new Date(`${game.gameDate}T00:00:00Z`).toLocaleDateString([], { month: 'short', day: 'numeric' })
-    : 'Soon';
-  const away = game.away?.code || 'TBD';
-  const home = game.home?.code || 'TBD';
-  const matchup = away === 'TBD' || home === 'TBD' ? 'Matchup TBD' : `${away} @ ${home}`;
-  const when = cleanUpcomingStatusText(game.statusText);
+  const date = formatDateEt(game);
+  const away = formatTeamLabel(game.away);
+  const home = formatTeamLabel(game.home);
+  const matchup = `${away} @ ${home}`;
+  const when = formatUpcomingTimeEt(game);
 
   return when ? `${date}: ${matchup} • ${when}` : `${date}: ${matchup}`;
+}
+
+function formatDateEt(game) {
+  if (game.startTimeUtc) {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'America/New_York'
+    }).format(new Date(game.startTimeUtc));
+  }
+
+  return game.gameDate
+    ? new Date(`${game.gameDate}T00:00:00Z`).toLocaleDateString([], { month: 'short', day: 'numeric' })
+    : 'Soon';
+}
+
+function formatTeamLabel(team) {
+  const code = String(team?.code ?? '').trim();
+  if (!code || /^tbd$/i.test(code)) return team?.name ? shortenTeamLabel(team.name) : 'TBD';
+  if (code.includes('/')) return shortenTeamLabel(code);
+  return code;
+}
+
+function shortenTeamLabel(value) {
+  return String(value)
+    .replace(/Los Angeles/gi, 'LA')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function formatUpcomingTimeEt(game) {
+  if (game.startTimeUtc) {
+    return new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: 'America/New_York'
+    }).format(new Date(game.startTimeUtc)) + ' ET';
+  }
+
+  return cleanUpcomingStatusText(game.statusText);
 }
 
 function cleanUpcomingStatusText(statusText) {

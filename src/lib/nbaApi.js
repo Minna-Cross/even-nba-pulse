@@ -175,11 +175,10 @@ export async function fetchUpcomingGames(daysAhead = 3, fetchImpl = fetch) {
 
     for (const game of scheduledGames) {
       upcoming.push(game);
-      if (upcoming.length >= 4) return upcoming;
     }
   }
 
-  return upcoming;
+  return sortUpcomingGames(upcoming).slice(0, 4);
 }
 
 function formatDateKey(offsetDays) {
@@ -206,6 +205,7 @@ function normalizeScheduleGames(scheduleJson, dateKey) {
 
       return {
         gameDate: event?.date ? event.date.slice(0, 10) : `${dateKey.slice(0, 4)}-${dateKey.slice(4, 6)}-${dateKey.slice(6, 8)}`,
+        startTimeUtc: event?.date || '',
         gameId: String(event?.id ?? ''),
         gameStatus: state === 'pre' ? 1 : state === 'in' ? 2 : 3,
         statusText,
@@ -233,6 +233,18 @@ function sanitizeScheduleTeamCode(code) {
   const raw = String(code ?? '').trim();
   if (!raw) return 'TBD';
   if (/tbd/i.test(raw)) return 'TBD';
-  if (raw.includes('/')) return 'TBD';
   return raw;
+}
+
+function sortUpcomingGames(games) {
+  return [...games].sort((a, b) => {
+    const aTime = a.startTimeUtc ? Date.parse(a.startTimeUtc) : NaN;
+    const bTime = b.startTimeUtc ? Date.parse(b.startTimeUtc) : NaN;
+
+    if (!Number.isNaN(aTime) && !Number.isNaN(bTime)) return aTime - bTime;
+    if (!Number.isNaN(aTime)) return -1;
+    if (!Number.isNaN(bTime)) return 1;
+
+    return String(a.gameDate || '').localeCompare(String(b.gameDate || ''));
+  });
 }

@@ -41,9 +41,10 @@ test('buildView shows upcoming schedule when no games are live', () => {
   const view = buildView(state);
   assert.match(view.dom.timeline, /Next scheduled matchups/);
   assert.match(view.dom.timeline, /ATL @ CLE/);
+  assert.match(view.dom.timeline, /Times shown in ET/);
 });
 
-test('buildView cleans upcoming TBD matchup lines', () => {
+test('buildView renders ET and keeps TBD placeholders readable', () => {
   const state = createInitialState();
   state.launchedAt = Date.now() - SPLASH_DURATION_MS - 1;
   state.upcomingGames = [
@@ -57,6 +58,6 @@ test('buildView cleans upcoming TBD matchup lines', () => {
   ];
 
   const view = buildView(state);
-  assert.match(view.dom.timeline, /Matchup TBD/);
+  assert.match(view.dom.timeline, /TBD @ TBD/);
   assert.match(view.dom.timeline, /7:30 PM ET/);
 });

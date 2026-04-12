@@ -153,7 +153,7 @@ test('fetchUpcomingGames returns upcoming scheduled games from schedule feed', a
   assert.equal(games[1].home.code, 'BOS');
 });
 
-test('fetchUpcomingGames normalizes slash or TBD schedule team codes', async () => {
+test('fetchUpcomingGames keeps bracket placeholder labels from schedule feed', async () => {
   const fetchImpl = async () => ({
     ok: true,
     status: 200,
@@ -180,7 +180,7 @@ test('fetchUpcomingGames normalizes slash or TBD schedule team codes', async () 
 
   const games = await fetchUpcomingGames(1, fetchImpl);
   assert.equal(games.length, 1);
-  assert.equal(games[0].away.code, 'TBD');
+  assert.equal(games[0].away.code, 'Clippers/Trail Blazers');
 });
 
 test('fetchUpcomingGames skips failed date fetches instead of throwing', async () => {
@@ -243,4 +243,31 @@ test('fetchUpcomingGames falls back to scoreboard format when schedule feed is e
   const games = await fetchUpcomingGames(1, fetchImpl);
   assert.equal(games.length, 1);
   assert.equal(games[0].home.code, 'LAC');
+});
+
+test('fetchUpcomingGames returns games in ascending start-time order', async () => {
+  const fetchImpl = async () => ({
+    ok: true,
+    status: 200,
+    async json() {
+      return {
+        events: [
+          {
+            id: 'late',
+            date: '2026-04-13T23:30:00Z',
+            competitions: [{ status: { type: { state: 'pre', shortDetail: '7:30 PM ET' } }, competitors: [] }]
+          },
+          {
+            id: 'early',
+            date: '2026-04-13T21:00:00Z',
+            competitions: [{ status: { type: { state: 'pre', shortDetail: '5:00 PM ET' } }, competitors: [] }]
+          }
+        ]
+      };
+    }
+  });
+
+  const games = await fetchUpcomingGames(1, fetchImpl);
+  assert.equal(games[0].gameId, 'early');
+  assert.equal(games[1].gameId, 'late');
 });
