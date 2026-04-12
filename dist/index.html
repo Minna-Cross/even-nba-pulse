@@ -1,26 +1,40 @@
-<div id="app">
-  <header>
-    <h1>NBA Pulse</h1>
-    <p id="connection-status">Initializing...</p>
-  </header>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NBA Pulse for Even Hub</title>
+    <meta name="description" content="Live NBA event timeline for Even G2 smart glasses." />
+    <script type="module" crossorigin src="/app.js"></script>
+    <link rel="stylesheet" crossorigin href="/app.css">
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>NBA Pulse</h1>
+        <p id="connection-status">Initializing…</p>
+      </header>
 
-  <section class="toolbar">
-    <button id="refresh-btn" type="button">Refresh</button>
-    <button id="next-game-btn" type="button">Next Game</button>
-    <button id="toggle-sort-btn" type="button">Sort Order</button>
-  </section>
+      <section class="toolbar">
+        <button id="refresh-btn" type="button">Refresh</button>
+        <button id="next-game-btn" type="button">Next Game</button>
+        <button id="toggle-sort-btn" type="button">Sort Order</button>
+      </section>
 
-  <section class="summary-card">
-    <div id="selected-game">Loading...</div>
-    <div id="selected-meta"></div>
-  </section>
+      <section class="summary-card">
+        <div id="selected-game">Loading Scoreboard…</div>
+        <div id="selected-meta"></div>
+      </section>
 
-  <section class="timeline-card">
-    <div id="timeline">Loading the live scoreboard...</div>
-  </section>
+      <section class="timeline-card">
+        <pre id="timeline"></pre>
+      </section>
 
-  <section class="footer-card">
-    <div id="page-status"></div>
-    <div id="error-status"></div>
-  </section>
-</div>
+      <section class="footer-card">
+        <div id="page-status"></div>
+        <div id="error-status"></div>
+      </section>
+    </div>
+
+  </body>
+</html>
