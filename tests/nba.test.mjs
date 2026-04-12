@@ -7,6 +7,7 @@ import {
   chooseDefaultGameIndex,
   fetchPlayByPlay,
   fetchScoreboard,
+  fetchUpcomingGames,
   gameHasStarted,
   normalizeActions,
   normalizeGames
@@ -112,4 +113,58 @@ test('fetchPlayByPlay treats 404 as empty timeline instead of hard error', async
 
   const play = await fetchPlayByPlay('missing-game', fetchImpl);
   assert.deepEqual(play, { game: { actions: [] } });
+});
+
+test('normalizeGames keeps scoreboard gameDate on each game', () => {
+  const games = normalizeGames(scoreboardFixture);
+  assert.equal(games[0].gameDate, '2026-04-08');
+});
+
+test('fetchUpcomingGames returns upcoming scheduled games from date scoreboards', async () => {
+  const tomorrow = {
+    scoreboard: {
+      gameDate: '2026-04-13',
+      games: [
+        {
+          gameId: 'g100',
+          gameStatus: 1,
+          gameStatusText: '7:00 pm ET',
+          homeTeam: { teamTricode: 'CLE', score: 0 },
+          awayTeam: { teamTricode: 'ATL', score: 0 }
+        }
+      ]
+    }
+  };
+
+  const dayTwo = {
+    scoreboard: {
+      gameDate: '2026-04-14',
+      games: [
+        {
+          gameId: 'g200',
+          gameStatus: 1,
+          gameStatusText: '8:00 pm ET',
+          homeTeam: { teamTricode: 'BOS', score: 0 },
+          awayTeam: { teamTricode: 'NYK', score: 0 }
+        }
+      ]
+    }
+  };
+
+  let callCount = 0;
+  const fetchImpl = async () => {
+    callCount += 1;
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return callCount === 1 ? tomorrow : dayTwo;
+      }
+    };
+  };
+
+  const games = await fetchUpcomingGames(2, fetchImpl);
+  assert.equal(games.length, 2);
+  assert.equal(games[0].away.code, 'ATL');
+  assert.equal(games[1].home.code, 'BOS');
 });

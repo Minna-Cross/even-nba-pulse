@@ -1,5 +1,5 @@
 import { REFRESH_INTERVAL_MS } from './lib/constants.js';
-import { fetchPlayByPlay, fetchScoreboard, normalizeActions, normalizeGames, chooseDefaultGameIndex, gameHasStarted } from './lib/nbaApi.js';
+import { fetchPlayByPlay, fetchScoreboard, fetchUpcomingGames, normalizeActions, normalizeGames, chooseDefaultGameIndex, gameHasStarted } from './lib/nbaApi.js';
 import { buildView, updateDom } from './render.js';
 import { connectEvenBridge, pushGlassesView, subscribeToEvenEvents } from './evenBridge.js';
 import { createInitialState, selectedGame } from './state.js';
@@ -51,7 +51,9 @@ export function createApp(dom) {
         state.selectedGameIndex = -1;
         state.plays = [];
         state.pageIndex = 0;
+        state.upcomingGames = await fetchUpcomingGames(5);
       } else {
+        state.upcomingGames = [];
         const selectedIndex = resolveSelectedGameIndex(games);
         state.selectedGameIndex = selectedIndex;
         state.selectedGameId = games[selectedIndex].gameId;
