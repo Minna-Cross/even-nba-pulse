@@ -51,8 +51,9 @@ export function createApp(dom) {
       const scoreboard = await fetchScoreboard();
       const games = normalizeGames(scoreboard);
       state.games = games;
+      const hasLiveGame = games.some((game) => game.gameStatus === 2);
 
-      if (!games.length) {
+      if (!hasLiveGame) {
         state.selectedGameId = null;
         state.selectedGameIndex = -1;
         state.plays = [];

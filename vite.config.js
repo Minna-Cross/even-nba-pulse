@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 
 const scoreboardTarget = 'https://cdn.nba.com';
+const scheduleTarget = 'https://site.api.espn.com';
 
 export default defineConfig({
   server: {
@@ -16,6 +17,11 @@ export default defineConfig({
         target: scoreboardTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/nba\/playbyplay\/([^/]+)$/, '/static/json/liveData/playbyplay/playbyplay_$1.json')
+      },
+      '/api/nba/schedule': {
+        target: scheduleTarget,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/nba\/schedule\/(\d{8})$/, '/apis/site/v2/sports/basketball/nba/scoreboard?dates=$1')
       }
     }
   },

@@ -63,6 +63,26 @@ export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
   }
 }
 
+export async function fetchScheduleForDate(dateKey, fetchImpl = fetch) {
+  try {
+    const response = await fetchImpl(`${API_BASE}/schedule/${dateKey}`, {
+      cache: 'no-store'
+    });
+
+    if (response.status === 404) {
+      return { events: [] };
+    }
+
+    if (!response.ok) {
+      throw new Error(`Schedule request failed (${response.status})`);
+    }
+
+    return response.json();
+  } catch (error) {
+    throw new Error(asNetworkErrorMessage(error));
+  }
+}
+
 export function normalizeGames(scoreboardJson) {
   const games = scoreboardJson?.scoreboard?.games ?? [];
   const gameDate = scoreboardJson?.scoreboard?.gameDate || '';
