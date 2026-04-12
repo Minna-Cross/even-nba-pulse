@@ -76,7 +76,23 @@ function formatUpcomingLine(game) {
   const date = game.gameDate
     ? new Date(`${game.gameDate}T00:00:00Z`).toLocaleDateString([], { month: 'short', day: 'numeric' })
     : 'Soon';
-  return `${date}: ${game.away.code} @ ${game.home.code} ${game.statusText}`;
+  const away = game.away?.code || 'TBD';
+  const home = game.home?.code || 'TBD';
+  const matchup = away === 'TBD' || home === 'TBD' ? 'Matchup TBD' : `${away} @ ${home}`;
+  const when = cleanUpcomingStatusText(game.statusText);
+
+  return when ? `${date}: ${matchup} • ${when}` : `${date}: ${matchup}`;
+}
+
+function cleanUpcomingStatusText(statusText) {
+  const raw = String(statusText || '').trim();
+  if (!raw || /^tbd$/i.test(raw)) return '';
+
+  return raw
+    .replace(/^\d{1,2}\/\d{1,2}\s*-\s*/i, '')
+    .replace(/\s+EDT$/i, ' ET')
+    .replace(/\s+EST$/i, ' ET')
+    .trim();
 }
 
 function shouldShowSplash(state) {

@@ -42,3 +42,21 @@ test('buildView shows upcoming schedule when no games are live', () => {
   assert.match(view.dom.timeline, /Next scheduled matchups/);
   assert.match(view.dom.timeline, /ATL @ CLE/);
 });
+
+test('buildView cleans upcoming TBD matchup lines', () => {
+  const state = createInitialState();
+  state.launchedAt = Date.now() - SPLASH_DURATION_MS - 1;
+  state.upcomingGames = [
+    {
+      gameDate: '2026-04-13',
+      gameStatus: 1,
+      statusText: '4/13 - 7:30 PM EDT',
+      home: { code: 'TBD', score: 0 },
+      away: { code: 'TBD', score: 0 }
+    }
+  ];
+
+  const view = buildView(state);
+  assert.match(view.dom.timeline, /Matchup TBD/);
+  assert.match(view.dom.timeline, /7:30 PM ET/);
+});

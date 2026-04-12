@@ -213,13 +213,13 @@ function normalizeScheduleGames(scheduleJson, dateKey) {
         clock: competition?.status?.displayClock || '',
         home: {
           id: String(homeRaw?.team?.id ?? ''),
-          code: homeRaw?.team?.abbreviation || 'HOME',
+          code: sanitizeScheduleTeamCode(homeRaw?.team?.abbreviation),
           name: homeRaw?.team?.displayName || 'Home Team',
           score: Number(homeRaw?.score ?? 0)
         },
         away: {
           id: String(awayRaw?.team?.id ?? ''),
-          code: awayRaw?.team?.abbreviation || 'AWAY',
+          code: sanitizeScheduleTeamCode(awayRaw?.team?.abbreviation),
           name: awayRaw?.team?.displayName || 'Away Team',
           score: Number(awayRaw?.score ?? 0)
         },
@@ -227,4 +227,12 @@ function normalizeScheduleGames(scheduleJson, dateKey) {
       };
     })
     .filter((game) => game.gameStatus === 1 && game.gameId);
+}
+
+function sanitizeScheduleTeamCode(code) {
+  const raw = String(code ?? '').trim();
+  if (!raw) return 'TBD';
+  if (/tbd/i.test(raw)) return 'TBD';
+  if (raw.includes('/')) return 'TBD';
+  return raw;
 }

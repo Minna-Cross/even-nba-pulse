@@ -153,6 +153,36 @@ test('fetchUpcomingGames returns upcoming scheduled games from schedule feed', a
   assert.equal(games[1].home.code, 'BOS');
 });
 
+test('fetchUpcomingGames normalizes slash or TBD schedule team codes', async () => {
+  const fetchImpl = async () => ({
+    ok: true,
+    status: 200,
+    async json() {
+      return {
+        events: [
+          {
+            id: 'g500',
+            date: '2026-04-13T23:00:00Z',
+            competitions: [
+              {
+                status: { type: { state: 'pre', shortDetail: '4/13 - 7:30 PM EDT' } },
+                competitors: [
+                  { homeAway: 'home', team: { id: '1', abbreviation: 'PHX' }, score: '0' },
+                  { homeAway: 'away', team: { id: '2', abbreviation: 'Clippers/Trail Blazers' }, score: '0' }
+                ]
+              }
+            ]
+          }
+        ]
+      };
+    }
+  });
+
+  const games = await fetchUpcomingGames(1, fetchImpl);
+  assert.equal(games.length, 1);
+  assert.equal(games[0].away.code, 'TBD');
+});
+
 test('fetchUpcomingGames skips failed date fetches instead of throwing', async () => {
   let callCount = 0;
   const fetchImpl = async () => {
