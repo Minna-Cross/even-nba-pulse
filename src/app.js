@@ -1,5 +1,5 @@
 import { REFRESH_INTERVAL_MS } from './lib/constants.js';
-import { fetchPlayByPlay, fetchScoreboard, normalizeActions, normalizeGames, chooseDefaultGameIndex, gameHasStarted } from './lib/nbaApi.js';
+import { fetchPlayByPlay, fetchScoreboard, fetchUpcomingGames, normalizeActions, normalizeGames, chooseDefaultGameIndex, gameHasStarted } from './lib/nbaApi.js';
 import { buildView, updateDom } from './render.js';
 import { connectEvenBridge, pushGlassesView, subscribeToEvenEvents } from './evenBridge.js';
 import { createInitialState, selectedGame } from './state.js';
@@ -14,6 +14,12 @@ const EVENT = {
   ABNORMAL_EXIT: 6
 };
 
+export function getEvenEventType(event) {
+  const textEvent = event?.textEvent;
+  const sysEvent = event?.sysEvent;
+  return textEvent?.eventType ?? sysEvent?.eventType;
+}
+
 export function createApp(dom) {
   const state = createInitialState();
   let unsubscribe = () => {};
@@ -24,7 +30,9 @@ export function createApp(dom) {
     state.mockBridge = bridgeResult.mockBridge;
 
     bindDomActions();
-    unsubscribe = subscribeToEvenEvents(state.bridge, handleEvenEvent);
+    unsubscribe = subscribeToEvenEvents(state.bridge, (event) => {
+      runUserAction(() => handleEvenEvent(event));
+    });
 
     await refreshAll({ keepPage: false, announceErrors: true });
     state.refreshTimer = window.setInterval(() => {
@@ -49,7 +57,9 @@ export function createApp(dom) {
         state.selectedGameIndex = -1;
         state.plays = [];
         state.pageIndex = 0;
+        state.upcomingGames = await fetchUpcomingGames(5);
       } else {
+        state.upcomingGames = [];
         const selectedIndex = resolveSelectedGameIndex(games);
         state.selectedGameIndex = selectedIndex;
         state.selectedGameId = games[selectedIndex].gameId;
@@ -117,12 +127,11 @@ export function createApp(dom) {
   }
 
   async function handleEvenEvent(event) {
-    const textEvent = event?.textEvent;
-    const sysEvent = event?.sysEvent;
-    const eventType = textEvent?.eventType ?? sysEvent?.eventType;
+    const eventType = getEvenEventType(event);
+
+    if (eventType == null) return;
 
     switch (eventType) {
-      case undefined:
       case EVENT.CLICK:
         await nextGame();
         break;
@@ -150,14 +159,23 @@ export function createApp(dom) {
 
   function bindDomActions() {
     dom.refreshButton.addEventListener('click', () => {
-      refreshAll({ keepPage: true, announceErrors: true });
+      runUserAction(() => refreshAll({ keepPage: true, announceErrors: true }));
     });
     dom.nextGameButton.addEventListener('click', () => {
-      nextGame();
+      runUserAction(nextGame);
     });
     dom.toggleSortButton.addEventListener('click', () => {
       toggleSort();
     });
+  }
+
+  function runUserAction(action) {
+    Promise.resolve()
+      .then(() => action())
+      .catch((error) => {
+        state.error = error instanceof Error ? error.message : String(error);
+        render();
+      });
   }
 
   function render() {
@@ -181,5 +199,5 @@ export function createApp(dom) {
     unsubscribe();
   }
 
-  return { init, destroy, state };
+  return { init, destroy, state, handleEvenEvent };
 }

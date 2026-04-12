@@ -1,0 +1,158 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { createApp } from '../src/app.js';
+
+function createButton() {
+  const handlers = new Map();
+  return {
+    addEventListener(type, handler) {
+      handlers.set(type, handler);
+    },
+    click() {
+      const handler = handlers.get('click');
+      if (handler) handler();
+    },
+    textContent: ''
+  };
+}
+
+function createDom() {
+  return {
+    refreshButton: createButton(),
+    nextGameButton: createButton(),
+    toggleSortButton: createButton(),
+    connectionStatus: { textContent: '' },
+    selectedGame: { textContent: '' },
+    selectedMeta: { textContent: '' },
+    timeline: { textContent: '' },
+    pageStatus: { textContent: '' },
+    errorStatus: { textContent: '' }
+  };
+}
+
+function jsonResponse(payload, ok = true, status = 200) {
+  return {
+    ok,
+    status,
+    async json() {
+      return payload;
+    }
+  };
+}
+
+test('nextGame click failure is caught and shown in state.error', async () => {
+  const scoreboard = {
+    scoreboard: {
+      games: [
+        {
+          gameId: 'g1',
+          gameStatus: 2,
+          gameStatusText: 'Q1 10:00',
+          homeTeam: { teamTricode: 'LAL', score: 0 },
+          awayTeam: { teamTricode: 'BOS', score: 0 }
+        },
+        {
+          gameId: 'g2',
+          gameStatus: 2,
+          gameStatusText: 'Q1 09:00',
+          homeTeam: { teamTricode: 'NYK', score: 0 },
+          awayTeam: { teamTricode: 'MIA', score: 0 }
+        }
+      ]
+    }
+  };
+
+  const playPayload = { game: { actions: [] } };
+
+  const responses = [
+    jsonResponse(scoreboard), // init scoreboard
+    jsonResponse(playPayload), // init selected game play-by-play
+    jsonResponse({}, false, 500) // nextGame fetch fails
+  ];
+
+  const originalFetch = global.fetch;
+  const originalWindow = global.window;
+
+  global.fetch = async () => {
+    if (!responses.length) {
+      throw new Error('No mocked response left');
+    }
+    return responses.shift();
+  };
+
+  global.window = {
+    setInterval() {
+      return 1;
+    },
+    clearInterval() {},
+    flutter_inappwebview: null
+  };
+
+  const dom = createDom();
+  const app = createApp(dom);
+
+  try {
+    await app.init();
+
+    dom.nextGameButton.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.match(app.state.error, /Play-by-play request failed \(500\)/);
+    assert.match(dom.errorStatus.textContent, /Play-by-play request failed \(500\)/);
+  } finally {
+    app.destroy();
+    global.fetch = originalFetch;
+    global.window = originalWindow;
+  }
+});
+
+test('malformed Even event without eventType does not advance selected game', async () => {
+  const scoreboard = {
+    scoreboard: {
+      games: [
+        {
+          gameId: 'g1',
+          gameStatus: 1,
+          gameStatusText: '7:00 pm ET',
+          homeTeam: { teamTricode: 'CLE', score: 0 },
+          awayTeam: { teamTricode: 'ATL', score: 0 }
+        },
+        {
+          gameId: 'g2',
+          gameStatus: 1,
+          gameStatusText: '8:00 pm ET',
+          homeTeam: { teamTricode: 'BOS', score: 0 },
+          awayTeam: { teamTricode: 'NYK', score: 0 }
+        }
+      ]
+    }
+  };
+
+  const originalFetch = global.fetch;
+  const originalWindow = global.window;
+  global.fetch = async () => jsonResponse(scoreboard);
+  global.window = {
+    setInterval() {
+      return 1;
+    },
+    clearInterval() {},
+    flutter_inappwebview: null
+  };
+
+  const dom = createDom();
+  const app = createApp(dom);
+
+  try {
+    await app.init();
+    const before = app.state.selectedGameId;
+
+    await app.handleEvenEvent({ textEvent: {} });
+
+    assert.equal(app.state.selectedGameId, before);
+  } finally {
+    app.destroy();
+    global.fetch = originalFetch;
+    global.window = originalWindow;
+  }
+});

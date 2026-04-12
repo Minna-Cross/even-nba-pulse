@@ -29,12 +29,47 @@ async function proxyFetch(url, res) {
   }
 }
 
+async function proxyFetchWithFallback(urls, res) {
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, { headers: { 'user-agent': 'even-nba-pulse-proxy/1.0' } });
+      if (response.status === 404) {
+        continue;
+      }
+
+      const text = await response.text();
+      res.writeHead(response.status, {
+        'content-type': 'application/json; charset=utf-8',
+        'access-control-allow-origin': ALLOW_ORIGIN,
+        'access-control-allow-methods': 'GET,OPTIONS',
+        'access-control-allow-headers': 'content-type'
+      });
+      res.end(text);
+      return;
+    } catch (error) {
+      writeJson(res, 502, { error: error instanceof Error ? error.message : String(error) });
+      return;
+    }
+  }
+
+  writeJson(res, 404, { error: 'Scoreboard not found for date' });
+}
+
 const server = http.createServer((req, res) => {
   if (!req.url) return writeJson(res, 400, { error: 'Missing url' });
   if (req.method === 'OPTIONS') return writeJson(res, 204, {});
 
   if (req.url === '/nba/scoreboard') {
     return proxyFetch('https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json', res);
+  }
+
+  const scoreboardByDateMatch = req.url.match(/^\/nba\/scoreboard\/(\d{8})$/);
+  if (scoreboardByDateMatch) {
+    const gameDate = scoreboardByDateMatch[1];
+    return proxyFetchWithFallback([
+      `https://cdn.nba.com/static/json/liveData/scoreboard/scoreboard_${gameDate}.json`,
+      `https://cdn.nba.com/static/json/liveData/scoreboard/scoreboard_${gameDate}_00.json`
+    ], res);
   }
 
   const playMatch = req.url.match(/^\/nba\/playbyplay\/([^/]+)$/);
