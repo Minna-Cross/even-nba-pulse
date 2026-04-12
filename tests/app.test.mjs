@@ -106,3 +106,53 @@ test('nextGame click failure is caught and shown in state.error', async () => {
     global.window = originalWindow;
   }
 });
+
+test('malformed Even event without eventType does not advance selected game', async () => {
+  const scoreboard = {
+    scoreboard: {
+      games: [
+        {
+          gameId: 'g1',
+          gameStatus: 1,
+          gameStatusText: '7:00 pm ET',
+          homeTeam: { teamTricode: 'CLE', score: 0 },
+          awayTeam: { teamTricode: 'ATL', score: 0 }
+        },
+        {
+          gameId: 'g2',
+          gameStatus: 1,
+          gameStatusText: '8:00 pm ET',
+          homeTeam: { teamTricode: 'BOS', score: 0 },
+          awayTeam: { teamTricode: 'NYK', score: 0 }
+        }
+      ]
+    }
+  };
+
+  const originalFetch = global.fetch;
+  const originalWindow = global.window;
+  global.fetch = async () => jsonResponse(scoreboard);
+  global.window = {
+    setInterval() {
+      return 1;
+    },
+    clearInterval() {},
+    flutter_inappwebview: null
+  };
+
+  const dom = createDom();
+  const app = createApp(dom);
+
+  try {
+    await app.init();
+    const before = app.state.selectedGameId;
+
+    await app.handleEvenEvent({ textEvent: {} });
+
+    assert.equal(app.state.selectedGameId, before);
+  } finally {
+    app.destroy();
+    global.fetch = originalFetch;
+    global.window = originalWindow;
+  }
+});
