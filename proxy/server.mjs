@@ -72,6 +72,15 @@ const server = http.createServer((req, res) => {
     ], res);
   }
 
+  const scheduleByDateMatch = req.url.match(/^\/nba\/schedule\/(\d{8})$/);
+  if (scheduleByDateMatch) {
+    const gameDate = scheduleByDateMatch[1];
+    return proxyFetch(
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${gameDate}`,
+      res
+    );
+  }
+
   const playMatch = req.url.match(/^\/nba\/playbyplay\/([^/]+)$/);
   if (playMatch) {
     const gameId = playMatch[1];

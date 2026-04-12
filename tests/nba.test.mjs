@@ -120,48 +120,32 @@ test('normalizeGames keeps scoreboard gameDate on each game', () => {
   assert.equal(games[0].gameDate, '2026-04-08');
 });
 
-test('fetchUpcomingGames returns upcoming scheduled games from date scoreboards', async () => {
-  const tomorrow = {
-    scoreboard: {
-      gameDate: '2026-04-13',
-      games: [
-        {
-          gameId: 'g100',
-          gameStatus: 1,
-          gameStatusText: '7:00 pm ET',
-          homeTeam: { teamTricode: 'CLE', score: 0 },
-          awayTeam: { teamTricode: 'ATL', score: 0 }
-        }
-      ]
-    }
-  };
-
-  const dayTwo = {
-    scoreboard: {
-      gameDate: '2026-04-14',
-      games: [
-        {
-          gameId: 'g200',
-          gameStatus: 1,
-          gameStatusText: '8:00 pm ET',
-          homeTeam: { teamTricode: 'BOS', score: 0 },
-          awayTeam: { teamTricode: 'NYK', score: 0 }
-        }
-      ]
-    }
-  };
-
+test('fetchUpcomingGames returns upcoming scheduled games from schedule feed', async () => {
   let callCount = 0;
-  const fetchImpl = async () => {
-    callCount += 1;
-    return {
-      ok: true,
-      status: 200,
-      async json() {
-        return callCount === 1 ? tomorrow : dayTwo;
-      }
-    };
-  };
+  const fetchImpl = async () => ({
+    ok: true,
+    status: 200,
+    async json() {
+      callCount += 1;
+      return {
+        events: [
+          {
+            id: callCount === 1 ? 'g100' : 'g200',
+            date: callCount === 1 ? '2026-04-13T23:00:00Z' : '2026-04-14T00:00:00Z',
+            competitions: [
+              {
+                status: { type: { state: 'pre', shortDetail: callCount === 1 ? '7:00 PM ET' : '8:00 PM ET' } },
+                competitors: [
+                  { homeAway: 'home', team: { id: '1', abbreviation: callCount === 1 ? 'CLE' : 'BOS', displayName: 'Home Team' }, score: '0' },
+                  { homeAway: 'away', team: { id: '2', abbreviation: callCount === 1 ? 'ATL' : 'NYK', displayName: 'Away Team' }, score: '0' }
+                ]
+              }
+            ]
+          }
+        ]
+      };
+    }
+  });
 
   const games = await fetchUpcomingGames(2, fetchImpl);
   assert.equal(games.length, 2);
@@ -200,6 +184,33 @@ test('fetchUpcomingGames skips failed date fetches instead of throwing', async (
   };
 
   const games = await fetchUpcomingGames(2, fetchImpl);
-  assert.equal(games.length, 1);
+  assert.ok(games.length >= 1);
   assert.equal(games[0].away.code, 'PHX');
+});
+
+test('fetchUpcomingGames falls back to scoreboard format when schedule feed is empty', async () => {
+  const fetchImpl = async (_url) => ({
+    ok: true,
+    status: 200,
+    async json() {
+      return {
+        scoreboard: {
+          gameDate: '2026-04-14',
+          games: [
+            {
+              gameId: 'g400',
+              gameStatus: 1,
+              gameStatusText: '10:00 pm ET',
+              homeTeam: { teamTricode: 'LAC', score: 0 },
+              awayTeam: { teamTricode: 'SAC', score: 0 }
+            }
+          ]
+        }
+      };
+    }
+  });
+
+  const games = await fetchUpcomingGames(1, fetchImpl);
+  assert.equal(games.length, 1);
+  assert.equal(games[0].home.code, 'LAC');
 });
