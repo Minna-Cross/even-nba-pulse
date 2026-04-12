@@ -148,19 +148,68 @@ export function gameHasStarted(game) {
 
 export async function fetchUpcomingGames(daysAhead = 3, fetchImpl = fetch) {
   const upcoming = [];
+  const seen = new Set();
 
   for (let offset = 1; offset <= daysAhead; offset += 1) {
     const dateKey = formatDateKey(offset);
     const scoreboard = await fetchScoreboardForDate(dateKey, fetchImpl);
     const games = normalizeGames(scoreboard).filter((game) => game.gameStatus === 1);
+    const scheduledGames = normalizeScheduleEvents(
+      await fetchScheduleForDate(dateKey, fetchImpl)
+    );
 
-    for (const game of games) {
+    for (const game of [...games, ...scheduledGames]) {
+      if (seen.has(game.gameId)) continue;
+      seen.add(game.gameId);
       upcoming.push(game);
       if (upcoming.length >= 4) return upcoming;
     }
   }
 
   return upcoming;
+}
+
+function normalizeScheduleEvents(scheduleJson) {
+  const events = scheduleJson?.events ?? [];
+
+  return events
+    .map((event) => {
+      const competition = event?.competitions?.[0] ?? {};
+      const competitors = competition?.competitors ?? [];
+      const home = competitors.find((team) => team?.homeAway === 'home');
+      const away = competitors.find((team) => team?.homeAway === 'away');
+      const statusType = competition?.status?.type ?? event?.status?.type ?? {};
+      const state = String(statusType?.state || '').toLowerCase();
+      const completed = Boolean(statusType?.completed);
+
+      if (completed || state === 'post') return null;
+
+      const gameStatus = state === 'in' ? 2 : 1;
+      const gameId = String(event?.id ?? competition?.id ?? '');
+      if (!gameId) return null;
+
+      return {
+        gameDate: event?.date || '',
+        gameId,
+        gameStatus,
+        statusText: statusType?.shortDetail || statusType?.description || event?.status?.type?.shortDetail || 'Scheduled',
+        period: Number(competition?.status?.period ?? 0),
+        clock: competition?.status?.displayClock || '',
+        home: normalizeScheduleTeam(home),
+        away: normalizeScheduleTeam(away),
+        raw: event
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeScheduleTeam(team) {
+  return {
+    id: String(team?.team?.id ?? ''),
+    code: team?.team?.abbreviation || team?.team?.shortDisplayName || 'TEAM',
+    name: team?.team?.displayName || team?.team?.shortDisplayName || 'Unknown Team',
+    score: Number(team?.score ?? 0)
+  };
 }
 
 function formatDateKey(offsetDays) {

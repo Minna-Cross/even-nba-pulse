@@ -49,6 +49,12 @@ const server = http.createServer((req, res) => {
     return proxyFetch(`https://cdn.nba.com/static/json/liveData/playbyplay/playbyplay_${gameId}.json`, res);
   }
 
+  const scheduleMatch = req.url.match(/^\/nba\/schedule\/(\d{8})$/);
+  if (scheduleMatch) {
+    const dateKey = scheduleMatch[1];
+    return proxyFetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${dateKey}`, res);
+  }
+
   return writeJson(res, 404, { error: 'Not found' });
 });
 
