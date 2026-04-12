@@ -5,6 +5,7 @@ import playFixture from './fixtures/playbyplay.fixture.json' with { type: 'json'
 
 import {
   chooseDefaultGameIndex,
+  fetchUpcomingGames,
   gameHasStarted,
   normalizeActions,
   normalizeGames
@@ -62,4 +63,32 @@ test('formatPlayLine produces compact timeline text', () => {
   assert.match(line, /Q3 5:11/);
   assert.match(line, /84-87/);
   assert.match(line, /Anthony Davis/);
+});
+
+test('fetchUpcomingGames includes today and sorts by start time', async () => {
+  const fetchImpl = async () => ({
+    ok: true,
+    status: 200,
+    async json() {
+      return {
+        events: [
+          {
+            id: 'late',
+            date: '2026-04-12T23:30:00Z',
+            competitions: [{ status: { type: { state: 'pre', shortDetail: '7:30 PM ET' } }, competitors: [] }]
+          },
+          {
+            id: 'early',
+            date: '2026-04-12T20:00:00Z',
+            competitions: [{ status: { type: { state: 'pre', shortDetail: '4:00 PM ET' } }, competitors: [] }]
+          }
+        ]
+      };
+    }
+  });
+
+  const games = await fetchUpcomingGames({ daysAhead: 0, includeToday: true, fetchImpl });
+  assert.equal(games.length, 2);
+  assert.equal(games[0].gameId, 'early');
+  assert.equal(games[1].gameId, 'late');
 });

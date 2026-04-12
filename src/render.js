@@ -13,6 +13,13 @@ export function buildView(state) {
     if (state.error) {
       bodyLines.push('Live feed unavailable.');
       bodyLines.push('Check proxy / network.');
+    } else if (state.upcomingGames.length) {
+      bodyLines.push('No live games right now.');
+      bodyLines.push('Upcoming schedule:');
+      for (const scheduled of state.upcomingGames.slice(0, 3)) {
+        bodyLines.push(formatUpcomingLine(scheduled));
+      }
+      bodyLines.push('Times shown in your local timezone.');
     } else {
       bodyLines.push('No NBA games found in the live scoreboard feed.');
       bodyLines.push('Refresh later or check again on a game day.');
@@ -59,6 +66,18 @@ export function buildView(state) {
       footer: footerLines.join('\n')
     }
   };
+}
+
+function formatUpcomingLine(game) {
+  const date = game.startTimeUtc
+    ? new Date(game.startTimeUtc).toLocaleDateString([], { month: 'short', day: 'numeric' })
+    : (game.gameDate || 'Soon');
+  const time = game.startTimeUtc
+    ? new Date(game.startTimeUtc).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : game.statusText;
+  const away = game.away?.code || 'TBD';
+  const home = game.home?.code || 'TBD';
+  return `${date}: ${away} @ ${home} • ${time}`;
 }
 
 export function updateDom(dom, view) {

@@ -40,6 +40,26 @@ export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
   }
 }
 
+export async function fetchScheduleForDate(dateKey, fetchImpl = fetch) {
+  try {
+    const response = await fetchImpl(`${API_BASE}/schedule/${dateKey}`, {
+      cache: 'no-store'
+    });
+
+    if (response.status === 404) {
+      return { events: [] };
+    }
+
+    if (!response.ok) {
+      throw new Error(`Schedule request failed (${response.status})`);
+    }
+
+    return response.json();
+  } catch (error) {
+    throw new Error(asNetworkErrorMessage(error));
+  }
+}
+
 export function normalizeGames(scoreboardJson) {
   const games = scoreboardJson?.scoreboard?.games ?? [];
 
@@ -99,4 +119,68 @@ export function chooseDefaultGameIndex(games) {
 
 export function gameHasStarted(game) {
   return game && game.gameStatus !== 1;
+}
+
+export async function fetchUpcomingGames({ daysAhead = 4, includeToday = true, fetchImpl = fetch } = {}) {
+  const upcoming = [];
+  const startOffset = includeToday ? 0 : 1;
+
+  for (let offset = startOffset; offset <= daysAhead; offset += 1) {
+    const dateKey = formatDateKey(offset);
+    try {
+      const schedule = await fetchScheduleForDate(dateKey, fetchImpl);
+      const games = normalizeScheduleEvents(schedule?.events ?? []);
+      for (const game of games) upcoming.push(game);
+    } catch {
+      // best-effort for schedule; skip failed day
+    }
+  }
+
+  return upcoming
+    .filter((game) => game.gameStatus === 1)
+    .sort((a, b) => Date.parse(a.startTimeUtc || '') - Date.parse(b.startTimeUtc || ''))
+    .slice(0, 6);
+}
+
+function normalizeScheduleEvents(events) {
+  return events.map((event) => {
+    const competition = event?.competitions?.[0];
+    const competitors = competition?.competitors ?? [];
+    const home = competitors.find((team) => team?.homeAway === 'home') || {};
+    const away = competitors.find((team) => team?.homeAway === 'away') || {};
+    const state = competition?.status?.type?.state;
+
+    return {
+      gameId: String(event?.id ?? ''),
+      gameDate: event?.date ? event.date.slice(0, 10) : '',
+      startTimeUtc: event?.date || '',
+      gameStatus: state === 'pre' ? 1 : state === 'in' ? 2 : 3,
+      statusText: competition?.status?.type?.shortDetail || 'TBD',
+      home: {
+        code: normalizeScheduleCode(home?.team?.abbreviation, home?.team?.displayName),
+        name: home?.team?.displayName || 'Home Team',
+        score: Number(home?.score ?? 0)
+      },
+      away: {
+        code: normalizeScheduleCode(away?.team?.abbreviation, away?.team?.displayName),
+        name: away?.team?.displayName || 'Away Team',
+        score: Number(away?.score ?? 0)
+      },
+      raw: event
+    };
+  });
+}
+
+function normalizeScheduleCode(code, fallbackName) {
+  const raw = String(code ?? '').trim();
+  if (!raw || /^tbd$/i.test(raw)) {
+    return fallbackName ? String(fallbackName).trim() : 'TBD';
+  }
+  return raw;
+}
+
+function formatDateKey(offsetDays) {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+  return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
 }

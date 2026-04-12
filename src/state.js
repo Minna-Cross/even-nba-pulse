@@ -9,6 +9,7 @@ export function createInitialState() {
     loading: true,
     error: '',
     games: [],
+    upcomingGames: [],
     selectedGameId: null,
     selectedGameIndex: -1,
     plays: [],

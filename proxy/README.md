@@ -11,6 +11,7 @@ node proxy/server.mjs
 This exposes:
 
 - `http://localhost:8787/nba/scoreboard`
+- `http://localhost:8787/nba/schedule/{YYYYMMDD}`
 - `http://localhost:8787/nba/playbyplay/{gameId}`
 
 ## Point the app at the proxy
