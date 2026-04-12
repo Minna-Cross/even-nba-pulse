@@ -7,6 +7,14 @@ export default defineConfig({
     host: true,
     port: 5173,
     proxy: {
+      '/api/nba/scoreboard/': {
+        target: scoreboardTarget,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(
+          /^\/api\/nba\/scoreboard\/(\d{8})$/,
+          '/static/json/liveData/scoreboard/scoreboard_$1.json'
+        )
+      },
       '/api/nba/scoreboard': {
         target: scoreboardTarget,
         changeOrigin: true,
