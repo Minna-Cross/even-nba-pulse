@@ -104,3 +104,7 @@ export function updateDom(dom, view) {
   dom.pageStatus.textContent = view.dom.pageStatus;
   dom.errorStatus.textContent = view.dom.errorStatus;
 }
+
+function formatUpcomingLine(game) {
+  return `${formatGameLabel(game)} • ${game.statusText}`;
+}
