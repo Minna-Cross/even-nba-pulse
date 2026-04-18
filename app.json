@@ -13,9 +13,9 @@
   "permissions": [
     {
       "name": "network",
-      "desc": "Fetches live NBA scoreboard and play-by-play data directly from NBA CDN endpoints.",
+      "desc": "Fetches live NBA scoreboard data from ESPN API (CORS-enabled).",
       "whitelist": [
-        "https://cdn.nba.com"
+        "https://site.api.espn.com"
       ]
     }
   ]
