@@ -1,5 +1,8 @@
-// Choose a default base for dev builds; require explicit VITE_NBA_API_BASE in production.
-const DEFAULT_API_BASE = import.meta.env.DEV ? '/api/nba' : '';
+// Default API base: dev uses Vite proxy, production uses NBA CDN directly.
+// Set VITE_NBA_API_BASE to use a custom proxy instead.
+const DEFAULT_API_BASE = import.meta.env.DEV
+  ? '/api/nba'
+  : 'https://cdn.nba.com/static/json/liveData';
 const API_BASE = (import.meta.env?.VITE_NBA_API_BASE || DEFAULT_API_BASE).replace(/\/$/, '');
 // Timeout for fetch requests in milliseconds. Can be configured via VITE_NBA_TIMEOUT_MS.
 const REQUEST_TIMEOUT_MS = Number(import.meta.env?.VITE_NBA_TIMEOUT_MS || 8000);
@@ -7,12 +10,6 @@ const REQUEST_TIMEOUT_MS = Number(import.meta.env?.VITE_NBA_TIMEOUT_MS || 8000);
 const now = () => globalThis.performance?.now?.() ?? Date.now();
 
 function buildApiUrl(path) {
-  if (!API_BASE) {
-    throw new Error(
-      'VITE_NBA_API_BASE is required for production builds. ' +
-      'Example: https://nba-proxy.example.com/nba'
-    );
-  }
   return `${API_BASE}/${path}`;
 }
 
@@ -68,12 +65,14 @@ async function fetchJson(path, label, notFoundValue, fetchImpl = fetch) {
 }
 
 export async function fetchScoreboard(fetchImpl = fetch) {
-  return fetchJson('scoreboard', 'scoreboard', { scoreboard: { games: [] } }, fetchImpl);
+  // Today's scoreboard
+  return fetchJson('scoreboard/todaysScoreboard_00.json', 'scoreboard', { scoreboard: { games: [] } }, fetchImpl);
 }
 
 export async function fetchScoreboardForDate(dateKey, fetchImpl = fetch) {
+  // Scoreboard for a specific date (YYYYMMDD format)
   return fetchJson(
-    `scoreboard/${dateKey}`,
+    `scoreboard/scoreboard_${dateKey}.json`,
     `scoreboard/${dateKey}`,
     { scoreboard: { games: [] } },
     fetchImpl
@@ -81,8 +80,9 @@ export async function fetchScoreboardForDate(dateKey, fetchImpl = fetch) {
 }
 
 export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
+  // Play-by-play for a specific game
   return fetchJson(
-    `playbyplay/${gameId}`,
+    `playbyplay/playbyplay_${gameId}.json`,
     `playbyplay/${gameId}`,
     { game: { actions: [] } },
     fetchImpl
