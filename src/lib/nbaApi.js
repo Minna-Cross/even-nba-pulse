@@ -1,7 +1,7 @@
-// Production: Direct NBA CDN integration.
-// The Even G2 glasses can fetch directly from cdn.nba.com.
-// Set VITE_NBA_API_BASE to use a custom proxy instead.
-const DEFAULT_API_BASE = 'https://cdn.nba.com/static/json/liveData';
+// Production: ESPN API with CORS support.
+// ESPN allows CORS (*) so the Even G2 glasses can fetch directly.
+// Set VITE_NBA_API_BASE to use a custom proxy if needed.
+const DEFAULT_API_BASE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
 const API_BASE = (import.meta.env?.VITE_NBA_API_BASE || DEFAULT_API_BASE).replace(/\/$/, '');
 // Timeout for fetch requests in milliseconds. Can be configured via VITE_NBA_TIMEOUT_MS.
 const REQUEST_TIMEOUT_MS = Number(import.meta.env?.VITE_NBA_TIMEOUT_MS || 8000);
@@ -9,7 +9,10 @@ const REQUEST_TIMEOUT_MS = Number(import.meta.env?.VITE_NBA_TIMEOUT_MS || 8000);
 const now = () => globalThis.performance?.now?.() ?? Date.now();
 
 function buildApiUrl(path) {
-  return `${API_BASE}/${path}`;
+  // Handle query strings in path (e.g., 'scoreboard?dates=20260418')
+  const [basePath, queryString] = path.split('?');
+  const query = queryString ? `?${queryString}` : '';
+  return `${API_BASE}/${basePath}${query}`;
 }
 
 function asNetworkErrorMessage(error, context = {}) {
@@ -23,11 +26,11 @@ function asNetworkErrorMessage(error, context = {}) {
   if (error instanceof TypeError) {
     return (
       `NBA feed unavailable (network/CORS) at ${context.url || 'configured endpoint'}. ` +
-      'Use the local proxy in dev or set VITE_NBA_API_BASE for production.'
+      'Check VITE_NBA_API_BASE configuration.'
     );
   }
   if (/did not match the expected pattern/i.test(message) || /Invalid URL/.test(message)) {
-    return 'NBA feed URL is invalid for this environment. Configure VITE_NBA_API_BASE to a full URL (for example: https://your-host/api/nba).';
+    return 'NBA feed URL is invalid for this environment. Configure VITE_NBA_API_BASE to a full URL.';
   }
   return message;
 }
@@ -48,10 +51,7 @@ async function fetchJson(path, label, notFoundValue, fetchImpl = fetch) {
     }
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      throw new Error(
-        `${label} request failed (${response.status})` +
-        (body ? `: ${body.slice(0, 160)}` : '')
-      );
+      throw new Error(`${label} request failed (${response.status})` + (body ? `: ${body.slice(0, 160)}` : ''));
     }
     return response.json();
   } catch (error) {
@@ -64,33 +64,30 @@ async function fetchJson(path, label, notFoundValue, fetchImpl = fetch) {
 }
 
 export async function fetchScoreboard(fetchImpl = fetch) {
-  // Today's scoreboard
-  return fetchJson('scoreboard/todaysScoreboard_00.json', 'scoreboard', { scoreboard: { games: [] } }, fetchImpl);
+  // Today's scoreboard from ESPN (CORS-enabled)
+  return fetchJson('scoreboard', 'scoreboard', { events: [] }, fetchImpl);
 }
 
 export async function fetchScoreboardForDate(dateKey, fetchImpl = fetch) {
-  // Scoreboard for a specific date (YYYYMMDD format)
+  // Scoreboard for a specific date (YYYYMMDD format) from ESPN
   return fetchJson(
-    `scoreboard/scoreboard_${dateKey}.json`,
+    `scoreboard?dates=${dateKey}`,
     `scoreboard/${dateKey}`,
-    { scoreboard: { games: [] } },
+    { events: [] },
     fetchImpl
   );
 }
 
 export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
-  // Play-by-play for a specific game
-  return fetchJson(
-    `playbyplay/playbyplay_${gameId}.json`,
-    `playbyplay/${gameId}`,
-    { game: { actions: [] } },
-    fetchImpl
-  );
+  // Play-by-play not available via ESPN public API
+  // Return empty array as fallback
+  console.warn('[nbaApi] Play-by-play not available for gameId:', gameId);
+  return { game: { actions: [] } };
 }
 
 export async function fetchScheduleForDate(dateKey, fetchImpl = fetch) {
   return fetchJson(
-    `schedule/${dateKey}`,
+    `scoreboard?dates=${dateKey}`,
     `schedule/${dateKey}`,
     { events: [] },
     fetchImpl
@@ -98,50 +95,47 @@ export async function fetchScheduleForDate(dateKey, fetchImpl = fetch) {
 }
 
 export function normalizeGames(scoreboardJson) {
-  const games = scoreboardJson?.scoreboard?.games ?? [];
-  const gameDate = scoreboardJson?.scoreboard?.gameDate || '';
+  // Support ESPN API structure (events with competitions)
+  const events = scoreboardJson?.events || [];
+  const gameDate = scoreboardJson?.day?.date || '';
 
-  return games.map((game) => ({
-    gameDate,
-    gameId: String(game.gameId),
-    gameStatus: Number(game.gameStatus ?? 0),
-    statusText: game.gameStatusText || game.gameEt || 'Status unavailable',
-    period: Number(game.period ?? 0),
-    clock: game.gameClock || '',
-    home: normalizeTeam(game.homeTeam),
-    away: normalizeTeam(game.awayTeam),
-    raw: game
-  }));
+  return events.map((event) => {
+    const competition = event.competitions?.[0] || {};
+    const competitors = competition.competitors || [];
+    const home = competitors.find((c) => c?.homeAway === 'home');
+    const away = competitors.find((c) => c?.homeAway === 'away');
+    const status = competition.status?.type || event.status?.type || {};
+    const state = (status.state || '').toLowerCase();
+    const isLive = state === 'in';
+    const isCompleted = status.completed || state === 'post';
+
+    return {
+      gameDate: event.date || gameDate,
+      gameId: String(event.id || ''),
+      gameStatus: isLive ? 2 : isCompleted ? 3 : 1,
+      statusText: status.shortDetail || status.description || 'Status unavailable',
+      period: Number(competition.status?.period || 0),
+      clock: competition.status?.displayClock || '',
+      home: normalizeTeamEspn(home),
+      away: normalizeTeamEspn(away),
+      raw: event
+    };
+  });
 }
 
-function normalizeTeam(team) {
+function normalizeTeamEspn(competitor) {
+  if (!competitor) return { id: '', code: 'TEAM', name: 'Unknown Team', score: 0 };
   return {
-    id: String(team?.teamId ?? ''),
-    code: team?.teamTricode || team?.teamCode || 'TEAM',
-    name: `${team?.teamCity ?? ''} ${team?.teamName ?? ''}`.trim() || 'Unknown Team',
-    score: Number(team?.score ?? 0)
+    id: String(competitor?.team?.id ?? ''),
+    code: competitor?.team?.abbreviation || competitor?.team?.shortDisplayName || 'TEAM',
+    name: competitor?.team?.displayName || competitor?.team?.shortDisplayName || 'Unknown Team',
+    score: Number(competitor?.score ?? 0)
   };
 }
 
 export function normalizeActions(playJson) {
-  const actions = playJson?.game?.actions ?? [];
-
-  return actions
-    .filter((action) => action && action.description)
-    .map((action) => ({
-      actionNumber: Number(action.actionNumber ?? action.orderNumber ?? 0),
-      order: Number(action.orderNumber ?? action.actionNumber ?? 0),
-      period: Number(action.period ?? 0),
-      clock: action.clock || '',
-      description: action.description,
-      awayScore: Number(action.scoreAway ?? 0),
-      homeScore: Number(action.scoreHome ?? 0),
-      scoreText:
-        action.scoreAway !== undefined && action.scoreHome !== undefined
-          ? `${action.scoreAway}-${action.scoreHome}`
-          : '',
-      raw: action
-    }));
+  // Play-by-play not available via ESPN - return empty array
+  return [];
 }
 
 export function chooseDefaultGameIndex(games) {
@@ -160,12 +154,12 @@ export function gameHasStarted(game) {
   return game && game.gameStatus !== 1;
 }
 
-export async function fetchUpcomingGames(daysAhead = 3, fetchImpl = fetch) {
-  const upcoming = [];
-  const seen = new Set();
+export async function fetchUpcomingGames(daysToFetch = 3, fetchImpl = fetch) {
+  const games = [];
+  const seenGameIds = new Set();
 
-  for (let offset = 1; offset <= daysAhead; offset += 1) {
-    const dateKey = formatDateKey(offset);
+  for (let dayOffset = 1; dayOffset <= daysToFetch; dayOffset += 1) {
+    const dateKey = formatDateKey(dayOffset);
     const [scoreboardResult, scheduleResult] = await Promise.allSettled([
       fetchScoreboardForDate(dateKey, fetchImpl),
       fetchScheduleForDate(dateKey, fetchImpl)
@@ -175,72 +169,125 @@ export async function fetchUpcomingGames(daysAhead = 3, fetchImpl = fetch) {
       throw scoreboardResult.reason;
     }
 
-    const games =
+    const scoreboardGames =
       scoreboardResult.status === 'fulfilled'
-        ? normalizeGames(scoreboardResult.value).filter((game) => game.gameStatus === 1)
+        ? normalizeGames(scoreboardResult.value).filter((g) => g.gameStatus === 1)
         : [];
+    const scheduleGames = scheduleResult.status === 'fulfilled' ? extractScheduleGames(scheduleResult.value) : [];
 
-    const scheduledGames =
-      scheduleResult.status === 'fulfilled'
-        ? normalizeScheduleEvents(scheduleResult.value)
-        : [];
-
-    for (const game of [...games, ...scheduledGames]) {
-      if (seen.has(game.gameId)) continue;
-      seen.add(game.gameId);
-      upcoming.push(game);
-      if (upcoming.length >= 4) return upcoming;
+    for (const game of [...scoreboardGames, ...scheduleGames]) {
+      if (!seenGameIds.has(game.gameId)) {
+        seenGameIds.add(game.gameId);
+        games.push(game);
+        if (games.length >= 4) {
+          return games;
+        }
+      }
     }
   }
 
-  return upcoming;
+  return games;
 }
 
-function normalizeScheduleEvents(scheduleJson) {
-  const events = scheduleJson?.events ?? [];
-
-  return events
+function extractScheduleGames(scheduleJson) {
+  return (scheduleJson?.events || [])
     .map((event) => {
-      const competition = event?.competitions?.[0] ?? {};
-      const competitors = competition?.competitors ?? [];
-      const home = competitors.find((team) => team?.homeAway === 'home');
-      const away = competitors.find((team) => team?.homeAway === 'away');
-      const statusType = competition?.status?.type ?? event?.status?.type ?? {};
-      const state = String(statusType?.state || '').toLowerCase();
-      const completed = Boolean(statusType?.completed);
+      const competition = event.competitions?.[0] || {};
+      const competitors = competition.competitors || [];
+      const home = competitors.find((c) => c?.homeAway === 'home');
+      const away = competitors.find((c) => c?.homeAway === 'away');
+      const status = competition.status?.type || event.status?.type || {};
+      const state = (status.state || '').toLowerCase();
 
-      if (completed || state === 'post') return null;
+      if (status.completed || state === 'post') {
+        return null;
+      }
 
       const gameStatus = state === 'in' ? 2 : 1;
-      const gameId = String(event?.id ?? competition?.id ?? '');
-      if (!gameId) return null;
+      const gameId = String(event.id || competition.id || '');
 
-      return {
-        gameDate: event?.date || '',
-        gameId,
-        gameStatus,
-        statusText: statusType?.shortDetail || statusType?.description || event?.status?.type?.shortDetail || 'Scheduled',
-        period: Number(competition?.status?.period ?? 0),
-        clock: competition?.status?.displayClock || '',
-        home: normalizeScheduleTeam(home),
-        away: normalizeScheduleTeam(away),
-        raw: event
-      };
+      return gameId
+        ? {
+            gameDate: event.date || '',
+            gameId,
+            gameStatus,
+            statusText: status.shortDetail || status.description || 'Scheduled',
+            period: Number(competition.status?.period || 0),
+            clock: competition.status?.displayClock || '',
+            home: normalizeTeamEspn(home),
+            away: normalizeTeamEspn(away),
+            raw: event
+          }
+        : null;
     })
     .filter(Boolean);
 }
 
-function normalizeScheduleTeam(team) {
+function formatDateKey(daysFromToday) {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + daysFromToday);
+  return `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+export function getTeamCode(team) {
+  return team?.code || '-';
+}
+
+export function truncateText(text, maxLength = 38) {
+  const safe = text ?? '';
+  const trimmed = String(safe).trim();
+  return trimmed.length <= maxLength ? trimmed : `${trimmed.slice(0, maxLength - 1)}.`;
+}
+
+export function formatClock(clock) {
+  const safe = clock ?? '';
+  if (!safe) return '';
+  if (safe.startsWith('PT') && safe.endsWith('S')) {
+    const match = safe.match(/PT(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
+    if (!match) return safe;
+    const minutes = Number(match[1] || 0);
+    const seconds = Math.floor(Number(match[2] || 0));
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  }
+  return safe;
+}
+
+export function formatGameMatchup(game) {
+  return `${game.away.code} @ ${game.home.code}`;
+}
+
+export function formatGameSummary(game) {
+  return `${game.away.code} ${game.away.score} - ${game.home.score} ${game.home.code} | ${game.statusText}`;
+}
+
+export function formatPlaySummary(play) {
+  const periodLabel = play.period > 0 ? `Q${play.period}` : '-';
+  const clockLabel = formatClock(play.clock) || '-';
+  const scoreLabel = play.scoreText || `${play.awayScore}-${play.homeScore}`;
+  const description = truncateText(play.description);
+  return `${periodLabel} ${clockLabel} | ${scoreLabel} | ${description}`;
+}
+
+export function sortPlays(plays, direction = 'desc') {
+  const sorted = [...plays].sort((a, b) => {
+    if (a.order !== b.order) return a.order - b.order;
+    return a.actionNumber - b.actionNumber;
+  });
+  return direction === 'asc' ? sorted : sorted.reverse();
+}
+
+export function paginateItems(items, pageIndex, pageSize = 7) {
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const safeIndex = Math.min(Math.max(pageIndex, 0), totalPages - 1);
+  const start = safeIndex * pageSize;
   return {
-    id: String(team?.team?.id ?? ''),
-    code: team?.team?.abbreviation || team?.team?.shortDisplayName || 'TEAM',
-    name: team?.team?.displayName || team?.team?.shortDisplayName || 'Unknown Team',
-    score: Number(team?.score ?? 0)
+    totalPages,
+    pageIndex: safeIndex,
+    items: items.slice(start, start + pageSize)
   };
 }
 
-function formatDateKey(offsetDays) {
-  const date = new Date();
-  date.setUTCDate(date.getUTCDate() + offsetDays);
-  return `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}`;
+export function formatPaginationStatus(pageIndex, totalPages, sortDirection) {
+  const directionLabel = sortDirection === 'asc' ? 'Oldest first' : 'Newest first';
+  return `Page ${pageIndex + 1}/${totalPages}  ${directionLabel}`;
 }
