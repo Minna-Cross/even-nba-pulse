@@ -1,8 +1,7 @@
-// Default API base: dev uses Vite proxy, production uses NBA CDN directly.
+// Production: Direct NBA CDN integration.
+// The Even G2 glasses can fetch directly from cdn.nba.com.
 // Set VITE_NBA_API_BASE to use a custom proxy instead.
-const DEFAULT_API_BASE = import.meta.env.DEV
-  ? '/api/nba'
-  : 'https://cdn.nba.com/static/json/liveData';
+const DEFAULT_API_BASE = 'https://cdn.nba.com/static/json/liveData';
 const API_BASE = (import.meta.env?.VITE_NBA_API_BASE || DEFAULT_API_BASE).replace(/\/$/, '');
 // Timeout for fetch requests in milliseconds. Can be configured via VITE_NBA_TIMEOUT_MS.
 const REQUEST_TIMEOUT_MS = Number(import.meta.env?.VITE_NBA_TIMEOUT_MS || 8000);
