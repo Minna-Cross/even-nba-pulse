@@ -15,7 +15,8 @@
       "name": "network",
       "desc": "Fetches live NBA scoreboard and play-by-play data from NBA CDN endpoints.",
       "whitelist": [
-        "https://cdn.nba.com"
+        "https://cdn.nba.com",
+        "https://nba-proxy.example.com"
       ]
     }
   ]

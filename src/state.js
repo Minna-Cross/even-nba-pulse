@@ -16,6 +16,8 @@ export function createInitialState() {
     plays: [],
     sortDirection: 'desc',
     pageIndex: 0,
+    // Whether the exit confirmation is open
+    confirmExitOpen: false,
     refreshTimer: null,
     lastUpdatedAt: null,
     visible: true
