@@ -19,6 +19,25 @@
         <button id="toggle-sort-btn" type="button">Sort Order</button>
       </section>
 
+      <!-- Exit confirmation dialog for preview; hidden by default -->
+      <dialog
+        id="exit-dialog"
+        aria-labelledby="exit-dialog-title"
+        aria-describedby="exit-dialog-copy"
+      >
+        <div class="dialog-form">
+          <h2 id="exit-dialog-title">Exit NBA Pulse?</h2>
+          <p id="exit-dialog-copy">
+            Double-click opened exit confirmation. Choose Cancel to stay
+            or Exit app to leave.
+          </p>
+          <div class="dialog-actions">
+            <button id="exit-cancel-btn" type="button" autofocus>Cancel</button>
+            <button id="exit-confirm-btn" type="button">Exit app</button>
+          </div>
+        </div>
+      </dialog>
+
       <section class="summary-card">
         <div id="selected-game">Loading Scoreboard…</div>
         <div id="selected-meta"></div>

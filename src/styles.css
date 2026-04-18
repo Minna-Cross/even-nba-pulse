@@ -116,6 +116,40 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+/* Styles for native dialog used in preview exit confirmation */
+dialog {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  color: var(--text);
+  max-width: 420px;
+  width: calc(100% - 32px);
+  padding: 0;
+  box-shadow: var(--shadow-lg);
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.56);
+}
+
+.dialog-form {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.dialog-form h2,
+.dialog-form p {
+  margin: 0;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
 #next-game-btn {
   background: linear-gradient(180deg, rgba(100, 181, 246, 0.16), rgba(100, 181, 246, 0.08));
   border-color: rgba(100, 181, 246, 0.42);

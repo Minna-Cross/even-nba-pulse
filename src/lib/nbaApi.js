@@ -1,86 +1,101 @@
-const API_BASE = (import.meta.env?.VITE_NBA_API_BASE || '/api/nba').replace(/\/$/, '');
+// Choose a default base for dev builds; require explicit VITE_NBA_API_BASE in production.
+const DEFAULT_API_BASE = import.meta.env.DEV ? '/api/nba' : '';
+const API_BASE = (import.meta.env?.VITE_NBA_API_BASE || DEFAULT_API_BASE).replace(/\/$/, '');
+// Timeout for fetch requests in milliseconds. Can be configured via VITE_NBA_TIMEOUT_MS.
+const REQUEST_TIMEOUT_MS = Number(import.meta.env?.VITE_NBA_TIMEOUT_MS || 8000);
+// Use performance.now if available for higher resolution timing
+const now = () => globalThis.performance?.now?.() ?? Date.now();
 
-function asNetworkErrorMessage(error) {
-  const message = error instanceof Error ? error.message : String(error);
-
-  if (error instanceof TypeError) {
-    return 'NBA feed unavailable (network/CORS). Use the local proxy in dev or set VITE_NBA_API_BASE for production.';
+function buildApiUrl(path) {
+  if (!API_BASE) {
+    throw new Error(
+      'VITE_NBA_API_BASE is required for production builds. ' +
+      'Example: https://nba-proxy.example.com/nba'
+    );
   }
+  return `${API_BASE}/${path}`;
+}
 
-  if (/did not match the expected pattern/i.test(message)) {
+function asNetworkErrorMessage(error, context = {}) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (error?.name === 'AbortError') {
+    return `NBA feed timed out while requesting ${context.url || context.label || 'the feed'}.`;
+  }
+  if (globalThis.navigator?.onLine === false) {
+    return 'Device appears offline. Reconnect and try again.';
+  }
+  if (error instanceof TypeError) {
+    return (
+      `NBA feed unavailable (network/CORS) at ${context.url || 'configured endpoint'}. ` +
+      'Use the local proxy in dev or set VITE_NBA_API_BASE for production.'
+    );
+  }
+  if (/did not match the expected pattern/i.test(message) || /Invalid URL/.test(message)) {
     return 'NBA feed URL is invalid for this environment. Configure VITE_NBA_API_BASE to a full URL (for example: https://your-host/api/nba).';
   }
-
   return message;
 }
 
+async function fetchJson(path, label, notFoundValue, fetchImpl = fetch) {
+  const url = buildApiUrl(path);
+  const controller = new AbortController();
+  const startedAt = now();
+  const timeoutId = globalThis.setTimeout(() => controller.abort('timeout'), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetchImpl(url, {
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+      signal: controller.signal
+    });
+    if (response.status === 404) {
+      return notFoundValue;
+    }
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(
+        `${label} request failed (${response.status})` +
+        (body ? `: ${body.slice(0, 160)}` : '')
+      );
+    }
+    return response.json();
+  } catch (error) {
+    console.error('[nbaApi]', { label, url, error });
+    throw new Error(asNetworkErrorMessage(error, { label, url }));
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+    console.debug('[nbaApi]', label, Math.round(now() - startedAt), 'ms', url);
+  }
+}
+
 export async function fetchScoreboard(fetchImpl = fetch) {
-  return fetchScoreboardByPath('scoreboard', fetchImpl);
+  return fetchJson('scoreboard', 'scoreboard', { scoreboard: { games: [] } }, fetchImpl);
 }
 
 export async function fetchScoreboardForDate(dateKey, fetchImpl = fetch) {
-  return fetchScoreboardByPath(`scoreboard/${dateKey}`, fetchImpl);
-}
-
-async function fetchScoreboardByPath(path, fetchImpl = fetch) {
-  try {
-    const response = await fetchImpl(`${API_BASE}/${path}`, {
-      cache: 'no-store'
-    });
-
-    if (response.status === 404) {
-      return { scoreboard: { games: [] } };
-    }
-
-    if (!response.ok) {
-      throw new Error(`Scoreboard request failed (${response.status})`);
-    }
-
-    return response.json();
-  } catch (error) {
-    throw new Error(asNetworkErrorMessage(error));
-  }
+  return fetchJson(
+    `scoreboard/${dateKey}`,
+    `scoreboard/${dateKey}`,
+    { scoreboard: { games: [] } },
+    fetchImpl
+  );
 }
 
 export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
-  try {
-    const response = await fetchImpl(
-      `${API_BASE}/playbyplay/${gameId}`,
-      { cache: 'no-store' }
-    );
-
-    if (response.status === 404) {
-      return { game: { actions: [] } };
-    }
-
-    if (!response.ok) {
-      throw new Error(`Play-by-play request failed (${response.status})`);
-    }
-
-    return response.json();
-  } catch (error) {
-    throw new Error(asNetworkErrorMessage(error));
-  }
+  return fetchJson(
+    `playbyplay/${gameId}`,
+    `playbyplay/${gameId}`,
+    { game: { actions: [] } },
+    fetchImpl
+  );
 }
 
 export async function fetchScheduleForDate(dateKey, fetchImpl = fetch) {
-  try {
-    const response = await fetchImpl(`${API_BASE}/schedule/${dateKey}`, {
-      cache: 'no-store'
-    });
-
-    if (response.status === 404) {
-      return { events: [] };
-    }
-
-    if (!response.ok) {
-      throw new Error(`Schedule request failed (${response.status})`);
-    }
-
-    return response.json();
-  } catch (error) {
-    throw new Error(asNetworkErrorMessage(error));
-  }
+  return fetchJson(
+    `schedule/${dateKey}`,
+    `schedule/${dateKey}`,
+    { events: [] },
+    fetchImpl
+  );
 }
 
 export function normalizeGames(scoreboardJson) {
@@ -152,11 +167,24 @@ export async function fetchUpcomingGames(daysAhead = 3, fetchImpl = fetch) {
 
   for (let offset = 1; offset <= daysAhead; offset += 1) {
     const dateKey = formatDateKey(offset);
-    const scoreboard = await fetchScoreboardForDate(dateKey, fetchImpl);
-    const games = normalizeGames(scoreboard).filter((game) => game.gameStatus === 1);
-    const scheduledGames = normalizeScheduleEvents(
-      await fetchScheduleForDate(dateKey, fetchImpl)
-    );
+    const [scoreboardResult, scheduleResult] = await Promise.allSettled([
+      fetchScoreboardForDate(dateKey, fetchImpl),
+      fetchScheduleForDate(dateKey, fetchImpl)
+    ]);
+
+    if (scoreboardResult.status === 'rejected' && scheduleResult.status === 'rejected') {
+      throw scoreboardResult.reason;
+    }
+
+    const games =
+      scoreboardResult.status === 'fulfilled'
+        ? normalizeGames(scoreboardResult.value).filter((game) => game.gameStatus === 1)
+        : [];
+
+    const scheduledGames =
+      scheduleResult.status === 'fulfilled'
+        ? normalizeScheduleEvents(scheduleResult.value)
+        : [];
 
     for (const game of [...games, ...scheduledGames]) {
       if (seen.has(game.gameId)) continue;

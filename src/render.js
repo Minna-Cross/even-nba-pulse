@@ -8,6 +8,11 @@ import { SPLASH_DURATION_MS } from './lib/constants.js';
 import { pagedPlays, selectedGame } from './state.js';
 
 export function buildView(state) {
+  // Show exit confirmation overlay if requested
+  if (state.confirmExitOpen) {
+    return buildExitConfirmationView(state);
+  }
+
   if (shouldShowSplash(state)) {
     return buildSplashView(state);
   }
@@ -280,4 +285,35 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+// Build view for exit confirmation state. This renders a minimal preview and glasses view.
+function buildExitConfirmationView(state) {
+  return {
+    dom: {
+      connectionStatus: state.mockBridge
+        ? 'Browser preview (mock bridge)'
+        : 'Connected to Even bridge',
+      selectedGame: 'Exit NBA Pulse?',
+      selectedMeta: 'Click to confirm • Scroll / double-click to cancel',
+      timeline: '',
+      timelineHtml: `
+        <div class="empty-title">Exit confirmation</div>
+        <div class="empty-copy">
+          Double-click opened confirmation. Click to exit, or scroll /
+          double-click to stay in the app.
+        </div>
+      `,
+      pageStatus: 'click exit • scroll cancel',
+      errorStatus: state.error || '',
+      summaryClass: 'summary-card is-empty',
+      timelineClass: 'timeline-card is-empty',
+      footerClass: 'footer-card'
+    },
+    glasses: {
+      header: 'NBA PULSE',
+      body: 'Exit app?\nClick = exit\nScroll = cancel',
+      footer: 'Confirm exit'
+    }
+  };
 }
