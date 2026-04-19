@@ -1,9 +1,8 @@
-// Production: Hybrid approach - ESPN for scoreboard (CORS), Cloudflare Worker for play-by-play.
-// ESPN allows CORS (*) for scoreboard. NBA CDN requires proxy for play-by-play.
-// Set VITE_NBA_API_BASE to use custom endpoints if needed.
-const ESPN_API_BASE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
-const NBA_PROXY_BASE = import.meta.env?.VITE_NBA_PROXY_BASE || 'https://summer-tooth-2846.minnacross.workers.dev/nba';
-const API_BASE = (import.meta.env?.VITE_NBA_API_BASE || ESPN_API_BASE).replace(/\/$/, '');
+// Production: Cloudflare Worker proxy for all NBA data.
+// Worker adds CORS headers to NBA CDN responses.
+// Set VITE_NBA_API_BASE to use custom proxy URL if needed.
+const NBA_PROXY_BASE = import.meta.env?.VITE_NBA_API_BASE || 'https://summer-tooth-2846.minnacross.workers.dev/nba';
+const API_BASE = NBA_PROXY_BASE.replace(/\/$/, '');
 // Timeout for fetch requests in milliseconds. Can be configured via VITE_NBA_TIMEOUT_MS.
 const REQUEST_TIMEOUT_MS = Number(import.meta.env?.VITE_NBA_TIMEOUT_MS || 8000);
 // Use performance.now if available for higher resolution timing
@@ -65,16 +64,16 @@ async function fetchJson(path, label, notFoundValue, fetchImpl = fetch) {
 }
 
 export async function fetchScoreboard(fetchImpl = fetch) {
-  // Today's scoreboard from ESPN (CORS-enabled)
-  return fetchJson('scoreboard', 'scoreboard', { events: [] }, fetchImpl);
+  // Today's scoreboard from NBA CDN via Cloudflare Worker (CORS-enabled)
+  return fetchJson('scoreboard', 'scoreboard', { scoreboard: { games: [] } }, fetchImpl);
 }
 
 export async function fetchScoreboardForDate(dateKey, fetchImpl = fetch) {
-  // Scoreboard for a specific date (YYYYMMDD format) from ESPN
+  // Scoreboard for a specific date (YYYYMMDD format) from NBA CDN via Worker
   return fetchJson(
-    `scoreboard?dates=${dateKey}`,
     `scoreboard/${dateKey}`,
-    { events: [] },
+    `scoreboard/${dateKey}`,
+    { scoreboard: { games: [] } },
     fetchImpl
   );
 }
@@ -111,49 +110,38 @@ export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
 
 export async function fetchScheduleForDate(dateKey, fetchImpl = fetch) {
   return fetchJson(
-    `scoreboard?dates=${dateKey}`,
+    `scoreboard/${dateKey}`,
     `schedule/${dateKey}`,
-    { events: [] },
+    { scoreboard: { games: [] } },
     fetchImpl
   );
 }
 
 export function normalizeGames(scoreboardJson) {
-  // Support ESPN API structure (events with competitions)
-  const events = scoreboardJson?.events || [];
-  const gameDate = scoreboardJson?.day?.date || '';
+  // NBA CDN structure (from Cloudflare Worker)
+  const games = scoreboardJson?.scoreboard?.games || [];
+  const gameDate = scoreboardJson?.scoreboard?.gameDate || '';
 
-  return events.map((event) => {
-    const competition = event.competitions?.[0] || {};
-    const competitors = competition.competitors || [];
-    const home = competitors.find((c) => c?.homeAway === 'home');
-    const away = competitors.find((c) => c?.homeAway === 'away');
-    const status = competition.status?.type || event.status?.type || {};
-    const state = (status.state || '').toLowerCase();
-    const isLive = state === 'in';
-    const isCompleted = status.completed || state === 'post';
-
-    return {
-      gameDate: event.date || gameDate,
-      gameId: String(event.id || ''),
-      gameStatus: isLive ? 2 : isCompleted ? 3 : 1,
-      statusText: status.shortDetail || status.description || 'Status unavailable',
-      period: Number(competition.status?.period || 0),
-      clock: competition.status?.displayClock || '',
-      home: normalizeTeamEspn(home),
-      away: normalizeTeamEspn(away),
-      raw: event
-    };
-  });
+  return games.map((game) => ({
+    gameDate,
+    gameId: String(game.gameId),
+    gameStatus: Number(game.gameStatus ?? 0),
+    statusText: game.gameStatusText || game.gameEt || 'Status unavailable',
+    period: Number(game.period ?? 0),
+    clock: game.gameClock || '',
+    home: normalizeTeamNba(game.homeTeam),
+    away: normalizeTeamNba(game.awayTeam),
+    raw: game
+  }));
 }
 
-function normalizeTeamEspn(competitor) {
-  if (!competitor) return { id: '', code: 'TEAM', name: 'Unknown Team', score: 0 };
+function normalizeTeamNba(team) {
+  if (!team) return { id: '', code: 'TEAM', name: 'Unknown Team', score: 0 };
   return {
-    id: String(competitor?.team?.id ?? ''),
-    code: competitor?.team?.abbreviation || competitor?.team?.shortDisplayName || 'TEAM',
-    name: competitor?.team?.displayName || competitor?.team?.shortDisplayName || 'Unknown Team',
-    score: Number(competitor?.score ?? 0)
+    id: String(team.teamId ?? ''),
+    code: team.teamTricode || team.teamCode || 'TEAM',
+    name: `${team.teamCity ?? ''} ${team.teamName ?? ''}`.trim() || 'Unknown Team',
+    score: Number(team.score ?? 0)
   };
 }
 
