@@ -2,7 +2,7 @@
   "package_id": "com.openai.nbapulse",
   "edition": "202601",
   "name": "NBA Pulse",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "min_app_version": "2.0.0",
   "min_sdk_version": "0.0.9",
   "entrypoint": "index.html",
@@ -13,9 +13,10 @@
   "permissions": [
     {
       "name": "network",
-      "desc": "Fetches live NBA scoreboard data from ESPN API (CORS-enabled).",
+      "desc": "Fetches NBA data from ESPN (scoreboard) and Cloudflare Worker proxy (play-by-play).",
       "whitelist": [
-        "https://site.api.espn.com"
+        "https://site.api.espn.com",
+        "https://summer-tooth-2846.minnacross.workers.dev"
       ]
     }
   ]
