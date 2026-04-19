@@ -1,8 +1,9 @@
-// Production: ESPN API with CORS support.
-// ESPN allows CORS (*) so the Even G2 glasses can fetch directly.
-// Set VITE_NBA_API_BASE to use a custom proxy if needed.
-const DEFAULT_API_BASE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
-const API_BASE = (import.meta.env?.VITE_NBA_API_BASE || DEFAULT_API_BASE).replace(/\/$/, '');
+// Production: Hybrid approach - ESPN for scoreboard (CORS), Cloudflare Worker for play-by-play.
+// ESPN allows CORS (*) for scoreboard. NBA CDN requires proxy for play-by-play.
+// Set VITE_NBA_API_BASE to use custom endpoints if needed.
+const ESPN_API_BASE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
+const NBA_PROXY_BASE = import.meta.env?.VITE_NBA_PROXY_BASE || 'https://summer-tooth-2846.minnacross.workers.dev/nba';
+const API_BASE = (import.meta.env?.VITE_NBA_API_BASE || ESPN_API_BASE).replace(/\/$/, '');
 // Timeout for fetch requests in milliseconds. Can be configured via VITE_NBA_TIMEOUT_MS.
 const REQUEST_TIMEOUT_MS = Number(import.meta.env?.VITE_NBA_TIMEOUT_MS || 8000);
 // Use performance.now if available for higher resolution timing
@@ -79,10 +80,33 @@ export async function fetchScoreboardForDate(dateKey, fetchImpl = fetch) {
 }
 
 export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
-  // Play-by-play not available via ESPN public API
-  // Return empty array as fallback
-  console.warn('[nbaApi] Play-by-play not available for gameId:', gameId);
-  return { game: { actions: [] } };
+  // Use Cloudflare Worker proxy for NBA CDN play-by-play (CORS-enabled)
+  const url = `${NBA_PROXY_BASE}/playbyplay/${gameId}`;
+  const controller = new AbortController();
+  const startedAt = now();
+  const timeoutId = globalThis.setTimeout(() => controller.abort('timeout'), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetchImpl(url, {
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+      signal: controller.signal
+    });
+    if (response.status === 404) {
+      return { game: { actions: [] } };
+    }
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(`Play-by-play request failed (${response.status})` + (body ? `: ${body.slice(0, 160)}` : ''));
+    }
+    const data = await response.json();
+    console.debug('[nbaApi]', 'playbyplay', Math.round(now() - startedAt), 'ms', url);
+    return data;
+  } catch (error) {
+    console.error('[nbaApi]', { label: 'playbyplay', url, error });
+    throw new Error(asNetworkErrorMessage(error, { label: 'playbyplay', url }));
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+  }
 }
 
 export async function fetchScheduleForDate(dateKey, fetchImpl = fetch) {
