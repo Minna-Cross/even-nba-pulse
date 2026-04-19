@@ -13,9 +13,8 @@
   "permissions": [
     {
       "name": "network",
-      "desc": "Fetches NBA data from ESPN (scoreboard) and Cloudflare Worker proxy (play-by-play).",
+      "desc": "Fetches NBA data via Cloudflare Worker proxy (CORS-enabled).",
       "whitelist": [
-        "https://site.api.espn.com",
         "https://summer-tooth-2846.minnacross.workers.dev"
       ]
     }
