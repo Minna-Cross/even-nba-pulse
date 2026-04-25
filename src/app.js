@@ -102,8 +102,6 @@ export function createApp(dom) {
   }
 
   async function nextGame() {
-    // Prevent switching games while exit confirmation is open
-    if (state.confirmExitOpen) return;
     if (!state.games.length) return;
     state.selectedGameIndex = (state.selectedGameIndex + 1) % state.games.length;
     state.selectedGameId = state.games[state.selectedGameIndex].gameId;
@@ -113,8 +111,6 @@ export function createApp(dom) {
   }
 
   function toggleSort() {
-    // Ignore sort toggles while exit confirmation is open
-    if (state.confirmExitOpen) return;
     state.sortDirection = state.sortDirection === 'desc' ? 'asc' : 'desc';
     state.pageIndex = 0;
     render();
@@ -127,75 +123,23 @@ export function createApp(dom) {
   }
 
   function prevPage() {
-    if (state.confirmExitOpen) {
-      closeExitConfirmation();
-      return;
-    }
     state.pageIndex = Math.max(state.pageIndex - 1, 0);
     render();
-  }
-
-  // Show exit confirmation overlay. Ignored if already open.
-  function openExitConfirmation() {
-    if (state.confirmExitOpen) return;
-    state.confirmExitOpen = true;
-    render();
-  }
-
-  // Close exit confirmation overlay if open.
-  function closeExitConfirmation() {
-    if (!state.confirmExitOpen) return;
-    state.confirmExitOpen = false;
-    render();
-  }
-
-  // Request the host or browser to exit the application. This fallback uses window history or
-  // window.close() and sets an error if not available.
-  function requestExit() {
-    // Replace this stub with Even-specific exit API when available.
-    if (window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-    if (typeof window.close === 'function') {
-      window.close();
-      return;
-    }
-    state.error =
-      'Exit was confirmed, but no host close action is available. ' +
-      'Replace requestExit() with the Even host close API if your bridge exposes one.';
-    render();
-  }
-
-  async function confirmExit() {
-    closeExitConfirmation();
-    requestExit();
   }
 
   async function handleEvenEvent(event) {
     const eventType = getEvenEventType(event);
 
-    if (eventType == null) return;
+    // Log all incoming events for debugging
+    console.log('📍 Even event received:', JSON.stringify({
+      eventType,
+      rawEvent: event,
+      textEvent: event?.textEvent,
+      sysEvent: event?.sysEvent
+    }));
 
-    // When exit confirmation is open, interpret events as confirm/cancel actions
-    if (state.confirmExitOpen) {
-      switch (eventType) {
-        case EVENT.CLICK:
-          await confirmExit();
-          break;
-        case EVENT.DOUBLE_CLICK:
-        case EVENT.SCROLL_TOP:
-        case EVENT.SCROLL_BOTTOM:
-          closeExitConfirmation();
-          break;
-        case EVENT.FOREGROUND_EXIT:
-        case EVENT.ABNORMAL_EXIT:
-          state.visible = false;
-          closeExitConfirmation();
-          break;
-        default:
-          break;
-      }
+    if (eventType == null) {
+      console.warn('⚠️ Unknown event type:', event);
       return;
     }
 
@@ -204,7 +148,7 @@ export function createApp(dom) {
         await nextGame();
         break;
       case EVENT.DOUBLE_CLICK:
-        openExitConfirmation();
+        toggleSort();
         break;
       case EVENT.SCROLL_BOTTOM:
         nextPage();
@@ -235,26 +179,6 @@ export function createApp(dom) {
     dom.toggleSortButton.addEventListener('click', () => {
       toggleSort();
     });
-
-    // Attach handlers for exit confirmation dialog if present
-    if (dom.exitCancelButton) {
-      dom.exitCancelButton.addEventListener('click', () => {
-        closeExitConfirmation();
-      });
-    }
-
-    if (dom.exitConfirmButton) {
-      dom.exitConfirmButton.addEventListener('click', () => {
-        runUserAction(confirmExit);
-      });
-    }
-
-    if (dom.exitDialog) {
-      dom.exitDialog.addEventListener('cancel', (event) => {
-        event.preventDefault();
-        closeExitConfirmation();
-      });
-    }
   }
 
   function runUserAction(action) {
@@ -269,7 +193,6 @@ export function createApp(dom) {
   function render() {
     const view = buildView(state);
     updateDom(dom, view);
-    syncExitDialog();
     pushGlassesView(state.bridge, state.started, view.glasses)
       .then((started) => {
         state.started = started;
@@ -278,18 +201,6 @@ export function createApp(dom) {
         state.error = error instanceof Error ? error.message : String(error);
         updateDom(dom, buildView(state));
       });
-  }
-
-  // Synchronize the state.confirmExitOpen with the native dialog element, opening or closing as needed.
-  function syncExitDialog() {
-    if (!dom.exitDialog) return;
-    if (state.confirmExitOpen && !dom.exitDialog.open) {
-      dom.exitDialog.showModal();
-      return;
-    }
-    if (!state.confirmExitOpen && dom.exitDialog.open) {
-      dom.exitDialog.close();
-    }
   }
 
   function destroy() {
