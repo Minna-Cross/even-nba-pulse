@@ -68,6 +68,14 @@ export function formatPlayLine(play) {
   return [firstLine, ...continuationLines].join('\n');
 }
 
+export function formatPlayLineGlasses(play, maxChars = 38) {
+  const period = play.period > 0 ? `Q${play.period}` : '–';
+  const clock = formatClock(play.clock) || '–';
+  const score = play.scoreText || `${play.awayScore}-${play.homeScore}`;
+  const text = trimText(safeText(play.description, ''), maxChars);
+  return `${period} ${clock} | ${score} | ${text}`;
+}
+
 export function sortPlays(plays, direction = 'desc') {
   const sorted = [...plays].sort((a, b) => {
     if (a.order !== b.order) return a.order - b.order;
