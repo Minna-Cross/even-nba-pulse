@@ -19,7 +19,9 @@ export function createInitialState() {
     confirmExitOpen: false,
     refreshTimer: null,
     lastUpdatedAt: null,
-    visible: true
+    visible: true,
+    lastEventCode: null,
+    eventLog: []
   };
 }
 

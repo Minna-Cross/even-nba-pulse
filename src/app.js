@@ -165,13 +165,10 @@ export function createApp(dom) {
   async function handleEvenEvent(event) {
     const eventType = getEvenEventType(event);
 
-    // Log all incoming events for debugging
-    console.log('📍 Even event received:', JSON.stringify({
-      eventType,
-      rawEvent: event,
-      textEvent: event?.textEvent,
-      sysEvent: event?.sysEvent
-    }));
+    // Log event code to state for on-glasses debugging
+    state.lastEventCode = eventType;
+    state.eventLog = [...state.eventLog.slice(-9), { code: eventType, time: Date.now() }];
+    console.log('[EVENT] Code:', eventType, 'Log:', state.eventLog.length, 'items');
 
     if (eventType == null) {
       console.warn('⚠️ Unknown event type:', event);
