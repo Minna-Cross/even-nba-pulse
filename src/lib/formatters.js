@@ -36,7 +36,7 @@ export function formatGameMeta(game) {
 export function formatPlayLine(play) {
   const period = play.period > 0 ? `Q${play.period}` : '–';
   const clock = formatClock(play.clock) || '–';
-  const score = play.scoreText || `${play.awayScore}-${play.homeScore}`;
+  const score = play.scoreText || `${String(play.awayScore).padStart(3)}-${String(play.homeScore).padStart(3)}`;
   const text = safeText(play.description, '');
   
   // Wrap long descriptions at ~50 chars with tabbed continuation
@@ -71,7 +71,7 @@ export function formatPlayLine(play) {
 export function formatPlayLineGlasses(play, maxChars = 38) {
   const period = play.period > 0 ? `Q${play.period}` : '–';
   const clock = formatClock(play.clock) || '–';
-  const score = play.scoreText || `${play.awayScore}-${play.homeScore}`;
+  const score = play.scoreText || `${String(play.awayScore).padStart(3)}-${String(play.homeScore).padStart(3)}`;
   const text = trimText(safeText(play.description, ''), maxChars);
   return `${period} ${clock} | ${score} | ${text}`;
 }
@@ -82,7 +82,9 @@ export function sortPlays(plays, direction = 'desc') {
     return a.actionNumber - b.actionNumber;
   });
 
-  return direction === 'asc' ? sorted : sorted.reverse();
+  const result = direction === 'asc' ? sorted : sorted.reverse();
+  console.log('[sortPlays]', direction, 'first:', result[0]?.period, result[0]?.actionNumber, 'last:', result[result.length-1]?.period);
+  return result;
 }
 
 export function paginate(items, pageIndex, pageSize = PAGE_SIZE) {
@@ -98,5 +100,5 @@ export function paginate(items, pageIndex, pageSize = PAGE_SIZE) {
 
 export function formatPageStatus(pageIndex, totalPages, direction) {
   const label = direction === 'asc' ? 'Oldest first' : 'Newest first';
-  return `Page ${pageIndex + 1}/${totalPages} • ${label}`;
+  return `Page ${pageIndex + 1}/${totalPages} - ${label}`;
 }

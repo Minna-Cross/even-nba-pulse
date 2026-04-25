@@ -279,7 +279,8 @@ export function updateDom(dom, view) {
     dom.timeline.textContent = view.dom.timeline;
   }
 
-  dom.summary.className = view.dom.summaryClass;
-  dom.timeline.className = view.dom.timelineClass;
-  dom.footer.className = view.dom.footerClass;
+  if (dom.summary) dom.summary.className = view.dom.summaryClass;
+  if (dom.timeline) dom.timeline.className = view.dom.timelineClass;
+  if (dom.footer) dom.footer.className = view.dom.footerClass;
 }
+
