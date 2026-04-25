@@ -16,6 +16,7 @@ export function createInitialState() {
     plays: [],
     sortDirection: 'desc',
     pageIndex: 0,
+    confirmExitOpen: false,
     refreshTimer: null,
     lastUpdatedAt: null,
     visible: true

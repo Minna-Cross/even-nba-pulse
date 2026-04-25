@@ -127,6 +127,41 @@ export function createApp(dom) {
     render();
   }
 
+  // Show exit confirmation overlay. Ignored if already open.
+  function openExitConfirmation() {
+    if (state.confirmExitOpen) return;
+    state.confirmExitOpen = true;
+    render();
+  }
+
+  // Close exit confirmation overlay if open.
+  function closeExitConfirmation() {
+    if (!state.confirmExitOpen) return;
+    state.confirmExitOpen = false;
+    render();
+  }
+
+  // Request the host or browser to exit the application.
+  function requestExit() {
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    if (typeof window.close === 'function') {
+      window.close();
+      return;
+    }
+    state.error =
+      'Exit was confirmed, but no host close action is available. ' +
+      'Replace requestExit() with the Even host close API if your bridge exposes one.';
+    render();
+  }
+
+  async function confirmExit() {
+    closeExitConfirmation();
+    requestExit();
+  }
+
   async function handleEvenEvent(event) {
     const eventType = getEvenEventType(event);
 
@@ -143,12 +178,34 @@ export function createApp(dom) {
       return;
     }
 
+    // When exit confirmation is open, interpret events as confirm/cancel actions
+    if (state.confirmExitOpen) {
+      switch (eventType) {
+        case EVENT.CLICK:
+          await confirmExit();
+          break;
+        case EVENT.DOUBLE_CLICK:
+        case EVENT.SCROLL_TOP:
+        case EVENT.SCROLL_BOTTOM:
+          closeExitConfirmation();
+          break;
+        case EVENT.FOREGROUND_EXIT:
+        case EVENT.ABNORMAL_EXIT:
+          state.visible = false;
+          closeExitConfirmation();
+          break;
+        default:
+          break;
+      }
+      return;
+    }
+
     switch (eventType) {
       case EVENT.CLICK:
         await nextGame();
         break;
       case EVENT.DOUBLE_CLICK:
-        toggleSort();
+        openExitConfirmation();
         break;
       case EVENT.SCROLL_BOTTOM:
         nextPage();
@@ -165,6 +222,7 @@ export function createApp(dom) {
         state.visible = false;
         break;
       default:
+        console.log('⚠️ Unhandled event type:', eventType);
         break;
     }
   }
@@ -179,6 +237,26 @@ export function createApp(dom) {
     dom.toggleSortButton.addEventListener('click', () => {
       toggleSort();
     });
+
+    // Attach handlers for exit confirmation dialog if present
+    if (dom.exitCancelButton) {
+      dom.exitCancelButton.addEventListener('click', () => {
+        closeExitConfirmation();
+      });
+    }
+
+    if (dom.exitConfirmButton) {
+      dom.exitConfirmButton.addEventListener('click', () => {
+        runUserAction(confirmExit);
+      });
+    }
+
+    if (dom.exitDialog) {
+      dom.exitDialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        closeExitConfirmation();
+      });
+    }
   }
 
   function runUserAction(action) {
@@ -193,6 +271,7 @@ export function createApp(dom) {
   function render() {
     const view = buildView(state);
     updateDom(dom, view);
+    syncExitDialog();
     pushGlassesView(state.bridge, state.started, view.glasses)
       .then((started) => {
         state.started = started;
@@ -201,6 +280,18 @@ export function createApp(dom) {
         state.error = error instanceof Error ? error.message : String(error);
         updateDom(dom, buildView(state));
       });
+  }
+
+  // Synchronize the state.confirmExitOpen with the native dialog element, opening or closing as needed.
+  function syncExitDialog() {
+    if (!dom.exitDialog) return;
+    if (state.confirmExitOpen && !dom.exitDialog.open) {
+      dom.exitDialog.showModal();
+      return;
+    }
+    if (!state.confirmExitOpen && dom.exitDialog.open) {
+      dom.exitDialog.close();
+    }
   }
 
   function destroy() {
