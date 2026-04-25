@@ -39,13 +39,11 @@ export function formatPlayLine(play) {
   const score = play.scoreText || `${String(play.awayScore).padStart(3)}-${String(play.homeScore).padStart(3)}`;
   const text = safeText(play.description, '');
   
-  // Wrap long descriptions at ~50 chars with tabbed continuation
   const maxWidth = 50;
   if (text.length <= maxWidth) {
     return `${period} ${clock} | ${score} | ${text}`;
   }
   
-  // Split into words and build lines
   const words = text.split(' ');
   const lines = [];
   let currentLine = '';
@@ -61,7 +59,6 @@ export function formatPlayLine(play) {
   }
   if (currentLine) lines.push(currentLine);
   
-  // First line has the header, continuation lines are tabbed
   const firstLine = `${period} ${clock} | ${score} | ${lines[0]}`;
   const continuationLines = lines.slice(1).map(line => `  ${line}`);
   
@@ -77,14 +74,17 @@ export function formatPlayLineGlasses(play, maxChars = 38) {
 }
 
 export function sortPlays(plays, direction = 'desc') {
+  // Create a new array and sort by order/actionNumber
   const sorted = [...plays].sort((a, b) => {
     if (a.order !== b.order) return a.order - b.order;
     return a.actionNumber - b.actionNumber;
   });
 
-  const result = direction === 'asc' ? sorted : sorted.reverse();
-  console.log('[sortPlays]', direction, 'first:', result[0]?.period, result[0]?.actionNumber, 'last:', result[result.length-1]?.period);
-  return result;
+  // Return reversed for DESC (newest first), original for ASC (oldest first)
+  if (direction === 'desc') {
+    return [...sorted].reverse();
+  }
+  return sorted;
 }
 
 export function paginate(items, pageIndex, pageSize = PAGE_SIZE) {

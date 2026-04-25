@@ -284,3 +284,6 @@ export function updateDom(dom, view) {
   if (dom.footer) dom.footer.className = view.dom.footerClass;
 }
 
+
+
+
