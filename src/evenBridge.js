@@ -120,6 +120,7 @@ function visibleContainer(container, x, y, width, height, content, capture) {
     height,
     borderWidth: 0,
     borderColor: 5,
+    borderRadius: 0,
     paddingLength: 2,
     containerID: container.id,
     containerName: container.name,
@@ -136,6 +137,7 @@ function captureContainer() {
     height: DISPLAY.height,
     borderWidth: 0,
     borderColor: 0,
+    borderRadius: 0,
     paddingLength: 0,
     containerID: CONTAINERS.capture.id,
     containerName: CONTAINERS.capture.name,
@@ -168,3 +170,5 @@ export function subscribeToEvenEvents(bridge, onEvent) {
 
   return bridge.onEvenHubEvent(onEvent);
 }
+
+
