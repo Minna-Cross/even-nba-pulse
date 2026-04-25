@@ -1,0 +1,5 @@
+{
+  "name": "nba-pulse-proxy",
+  "compatibility_date": "2026-04-25",
+  "main": "worker/index.js"
+}

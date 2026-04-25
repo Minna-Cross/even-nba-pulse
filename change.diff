@@ -1,0 +1,27 @@
+﻿diff --git a/src/lib/nbaApi.js b/src/lib/nbaApi.js
+index abe29d3..bf6e9d6 100644
+--- a/src/lib/nbaApi.js
++++ b/src/lib/nbaApi.js
+@@ -146,8 +146,20 @@ function normalizeTeamNba(team) {
+ }
+ 
+ export function normalizeActions(playJson) {
+-  // Play-by-play not available via ESPN - return empty array
+-  return [];
++  // NBA CDN play-by-play structure: game.actions array
++  const actions = playJson?.game?.actions || [];
++  
++  return actions
++    .filter(action => action.description) // Skip events without descriptions
++    .map((action, index) => ({
++      actionNumber: action.actionNumber || index,
++      period: action.period || 1,
++      clock: action.gameClock || '',
++      description: action.description || '',
++      awayScore: action.scoreAway ?? action.awayScore ?? 0,
++      homeScore: action.scoreHome ?? action.homeScore ?? 0,
++      order: action.order ?? action.actionNumber ?? index
++    }));
+ }
+ 
+ export function chooseDefaultGameIndex(games) {
