@@ -37,8 +37,35 @@ export function formatPlayLine(play) {
   const period = play.period > 0 ? `Q${play.period}` : '–';
   const clock = formatClock(play.clock) || '–';
   const score = play.scoreText || `${play.awayScore}-${play.homeScore}`;
-  const text = trimText(play.description);
-  return `${period} ${clock} | ${score} | ${text}`;
+  const text = safeText(play.description, '');
+  
+  // Wrap long descriptions at ~50 chars with tabbed continuation
+  const maxWidth = 50;
+  if (text.length <= maxWidth) {
+    return `${period} ${clock} | ${score} | ${text}`;
+  }
+  
+  // Split into words and build lines
+  const words = text.split(' ');
+  const lines = [];
+  let currentLine = '';
+  
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    if (testLine.length <= maxWidth) {
+      currentLine = testLine;
+    } else {
+      if (currentLine) lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  
+  // First line has the header, continuation lines are tabbed
+  const firstLine = `${period} ${clock} | ${score} | ${lines[0]}`;
+  const continuationLines = lines.slice(1).map(line => `  ${line}`);
+  
+  return [firstLine, ...continuationLines].join('\n');
 }
 
 export function sortPlays(plays, direction = 'desc') {

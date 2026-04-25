@@ -301,3 +301,4 @@ export function createApp(dom) {
 
   return { init, destroy, state, handleEvenEvent };
 }
+
