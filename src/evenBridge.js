@@ -29,11 +29,12 @@ export async function pushGlassesView(bridge, started, view) {
 
   if (!started) {
     const payload = {
-      containerTotalNum: 3,
+      containerTotalNum: 4,
       textObject: [
-        visibleContainer(CONTAINERS.header, 0, 0, DISPLAY.width, 58, safeView.header, 1),
-        visibleContainer(CONTAINERS.body, 0, 58, DISPLAY.width, 198, safeView.body, 1),
-        visibleContainer(CONTAINERS.footer, 0, 256, DISPLAY.width, 32, safeView.footer, 1)
+        visibleContainer(CONTAINERS.header, 0, 0, DISPLAY.width, 58, safeView.header, 0),
+        visibleContainer(CONTAINERS.body, 0, 58, DISPLAY.width, 198, safeView.body, 0),
+        visibleContainer(CONTAINERS.footer, 0, 256, DISPLAY.width, 32, safeView.footer, 0),
+        captureContainer()
       ]
     };
     const result = await bridge.createStartUpPageContainer(payload);
@@ -101,6 +102,22 @@ function visibleContainer(container, x, y, width, height, content, capture) {
     containerName: container.name,
     content,
     isEventCapture: capture
+  };
+}
+
+function captureContainer() {
+  return {
+    xPosition: 0,
+    yPosition: 0,
+    width: DISPLAY.width,
+    height: DISPLAY.height,
+    borderWidth: 0,
+    borderColor: 0,
+    paddingLength: 0,
+    containerID: CONTAINERS.capture.id,
+    containerName: CONTAINERS.capture.name,
+    content: ' ',
+    isEventCapture: 1
   };
 }
 
