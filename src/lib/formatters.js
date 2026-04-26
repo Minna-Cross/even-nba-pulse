@@ -35,13 +35,14 @@ export function formatGameMeta(game) {
 
 export function formatPlayLine(play) {
   const period = play.period > 0 ? `Q${play.period}` : '–';
-  const clock = formatClock(play.clock) || '–';
-  const score = play.scoreText || `${String(play.awayScore).padStart(3)}-${String(play.homeScore).padStart(3)}`;
+  const clock = formatClock(play.clock);
+  const timeSlot = clock ? `${period} ${clock}` : period;
+  const score = play.scoreText || `${play.awayScore}-${play.homeScore}`;
   const text = safeText(play.description, '');
   
   const maxWidth = 50;
   if (text.length <= maxWidth) {
-    return `${period} ${clock} | ${score} | ${text}`;
+    return `${timeSlot} | ${score} | ${text}`;
   }
   
   const words = text.split(' ');
@@ -59,32 +60,28 @@ export function formatPlayLine(play) {
   }
   if (currentLine) lines.push(currentLine);
   
-  const firstLine = `${period} ${clock} | ${score} | ${lines[0]}`;
-  const continuationLines = lines.slice(1).map(line => `  ${line}`);
+  const firstLine = `${timeSlot} | ${score} | ${lines[0]}`;
+  const indent = ' '.repeat(timeSlot.length + 3 + score.length + 3);
+  const continuationLines = lines.slice(1).map(line => `${indent}${line}`);
   
   return [firstLine, ...continuationLines].join('\n');
 }
 
 export function formatPlayLineGlasses(play, maxChars = 38) {
   const period = play.period > 0 ? `Q${play.period}` : '–';
-  const clock = formatClock(play.clock) || '–';
-  const score = play.scoreText || `${String(play.awayScore).padStart(3)}-${String(play.homeScore).padStart(3)}`;
+  const clock = formatClock(play.clock);
+  const timeSlot = clock ? `${period} ${clock}` : period;
+  const score = play.scoreText || `${play.awayScore}-${play.homeScore}`;
   const text = trimText(safeText(play.description, ''), maxChars);
-  return `${period} ${clock} | ${score} | ${text}`;
+  return `${timeSlot} | ${score} | ${text}`;
 }
 
-export function sortPlays(plays, direction = 'desc') {
-  // Create a new array and sort by order/actionNumber
+export function sortPlays(plays) {
   const sorted = [...plays].sort((a, b) => {
     if (a.order !== b.order) return a.order - b.order;
     return a.actionNumber - b.actionNumber;
   });
-
-  // Return reversed for DESC (newest first), original for ASC (oldest first)
-  if (direction === 'desc') {
-    return [...sorted].reverse();
-  }
-  return sorted;
+  return [...sorted].reverse();
 }
 
 export function paginate(items, pageIndex, pageSize = PAGE_SIZE) {

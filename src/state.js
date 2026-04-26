@@ -30,6 +30,7 @@ export function selectedGame(state) {
 }
 
 export function pagedPlays(state) {
-  const sorted = sortPlays(state.plays, state.sortDirection);
+  const sorted = sortPlays(state.plays);
   return paginate(sorted, state.pageIndex, PAGE_SIZE);
 }
+
