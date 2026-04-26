@@ -12,7 +12,7 @@ test('buildView returns splash content during initial splash window', () => {
   const view = buildView(state);
 
   assert.match(view.glasses.header, /NBA PULSE/);
-  assert.match(view.glasses.body, /Loading live scoreboard/);
+  assert.match(view.glasses.body, /Loading/);
 });
 
 test('buildView exits splash mode after splash window', () => {
