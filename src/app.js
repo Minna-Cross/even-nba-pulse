@@ -110,12 +110,6 @@ export function createApp(dom) {
     render();
   }
 
-  function toggleSort() {
-    state.sortDirection = state.sortDirection === 'desc' ? 'asc' : 'desc';
-    state.pageIndex = 0;
-    render();
-  }
-
   function nextPage() {
     const totalPages = Math.max(1, Math.ceil(state.plays.length / 7));
     state.pageIndex = Math.min(state.pageIndex + 1, totalPages - 1);
@@ -225,14 +219,8 @@ export function createApp(dom) {
   }
 
   function bindDomActions() {
-    dom.refreshButton.addEventListener('click', () => {
-      runUserAction(() => refreshAll({ keepPage: true, announceErrors: true }));
-    });
     dom.nextGameButton.addEventListener('click', () => {
       runUserAction(nextGame);
-    });
-    dom.toggleSortButton.addEventListener('click', () => {
-      toggleSort();
     });
 
     // Attach handlers for exit confirmation dialog if present
@@ -301,4 +289,5 @@ export function createApp(dom) {
 
   return { init, destroy, state, handleEvenEvent };
 }
+
 

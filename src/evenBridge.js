@@ -25,15 +25,7 @@ export async function connectEvenBridge() {
 
 export async function pushGlassesView(bridge, started, view) {
   if (!bridge || bridge.__mock) return started;
-  
   const safeView = sanitizeBridgeView(view);
-  
-  console.log('[pushGlassesView]', {
-    headerLen: safeView.header.length,
-    bodyLen: safeView.body.length,
-    footerLen: safeView.footer.length,
-    started
-  });
 
   if (!started) {
     const payload = {
@@ -45,20 +37,12 @@ export async function pushGlassesView(bridge, started, view) {
         captureContainer()
       ]
     };
-    
-    console.log('[createStartUpPageContainer] payload:', JSON.stringify(payload, null, 2));
-    
     const result = await bridge.createStartUpPageContainer(payload);
-    
-    console.log('[createStartUpPageContainer] result:', result);
 
     if (result !== 0) {
-      console.error('[createStartUpPageContainer] failed with code', result, 'header:', safeView.header, 'body:', safeView.body, 'footer:', safeView.footer);
       throw new Error(
         `createStartUpPageContainer failed with code ${result}. ` +
-          'Header: ' + safeView.header.length + ' chars, ' +
-          'Body: ' + safeView.body.length + ' chars, ' +
-          'Footer: ' + safeView.footer.length + ' chars.'
+          'Try shortening text content and confirm container geometry matches your device profile.'
       );
     }
 
@@ -82,7 +66,6 @@ async function upgradeTextContainer(bridge, container, content) {
   });
 
   if (typeof result === 'number' && result !== 0) {
-    console.error('[textContainerUpgrade] failed for', container.name, 'code:', result);
     throw new Error(`textContainerUpgrade failed for ${container.name} with code ${result}`);
   }
 }
@@ -103,13 +86,7 @@ function sanitizeBridgeText(text, maxLength) {
 
   if (safeText.length <= maxLength) return safeText;
 
-  // Truncate to fit, trying to end at a newline
-  const truncated = safeText.slice(0, maxLength);
-  const lastNewline = truncated.lastIndexOf('\n');
-  if (lastNewline > maxLength * 0.8) {
-    return truncated.slice(0, lastNewline);
-  }
-  return truncated.slice(0, Math.max(0, maxLength - 1)) + '…';
+  return `${safeText.slice(0, Math.max(0, maxLength - 1))}…`;
 }
 
 function visibleContainer(container, x, y, width, height, content, capture) {
@@ -150,11 +127,9 @@ function createMockBridge() {
   return {
     __mock: true,
     async createStartUpPageContainer() {
-      console.log('[mock] createStartUpPageContainer called');
       return 0;
     },
     async textContainerUpgrade() {
-      console.log('[mock] textContainerUpgrade called');
       return true;
     },
     onEvenHubEvent() {
@@ -170,5 +145,3 @@ export function subscribeToEvenEvents(bridge, onEvent) {
 
   return bridge.onEvenHubEvent(onEvent);
 }
-
-

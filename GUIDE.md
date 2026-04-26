@@ -1,21 +1,21 @@
   ```
-    __    __  _______    ______                                                 
-   |  \  |  \|       \  /      \                                                
-   | $$\ | $$| $$$$$$$\|  $$$$$$\                                               
-   | $$$\| $$| $$__/ $$| $$__| $$                                               
-   | $$$$\ $$| $$    $$| $$    $$                                               
-   | $$\$$ $$| $$$$$$$\| $$$$$$$$                                               
-   | $$ \$$$$| $$__/ $$| $$  | $$                                               
-   | $$  \$$$| $$    $$| $$  | $$                                               
-    \$$   \$$ \$$$$$$$  \$$   \$$                                               
-     ________  ___  ___  ___       ________  _______                            
-    |\   __  \|\  \|\  \|\  \     |\   ____\|\  ___ \                           
-    \ \  \|\  \ \  \\\  \ \  \    \ \  \___|\ \   __/|                          
-     \ \   ____\ \  \\\  \ \  \    \ \_____  \ \  \_|/__                        
-      \ \  \___|\ \  \\\  \ \  \____\|____|\  \ \  \_|\ \                       
-       \ \__\    \ \_______\ \_______\____\_\  \ \_______\                      
-        \|__|     \|_______|\|_______|\_________\|_______|                      
-                                     \|_________|                               
+    __    __  _______    ______
+   |  \  |  \|       \  /      \
+   | $$\ | $$| $$$$$$$\|  $$$$$$\
+   | $$$\| $$| $$__/ $$| $$__| $$
+   | $$$$\ $$| $$    $$| $$    $$
+   | $$\$$ $$| $$$$$$$\| $$$$$$$$
+   | $$ \$$$$| $$__/ $$| $$  | $$
+   | $$  \$$$| $$    $$| $$  | $$
+    \$$   \$$ \$$$$$$$  \$$   \$$
+     ________  ___  ___  ___       ________  _______
+    |\   __  \|\  \|\  \|\  \     |\   ____\|\  ___ \
+    \ \  \|\  \ \  \\\  \ \  \    \ \  \___|\ \   __/|
+     \ \   ____\ \  \\\  \ \  \    \ \_____  \ \  \_|/__
+      \ \  \___|\ \  \\\  \ \  \____\|____|\  \ \  \_|\ \
+       \ \__\    \ \_______\ \_______\____\_\  \ \_______\
+        \|__|     \|_______|\|_______|\_________\|_______|
+                                     \|_________|
 ```
 
 # NBA Pulse on Even Hub: start-to-finish guide
@@ -104,8 +104,8 @@ For this app, the only required permission is:
 ### `src/lib/nbaApi.js`
 Fetches and normalizes:
 
-- today’s scoreboard
-- one game’s play-by-play feed
+- today's scoreboard
+- one game's play-by-play feed
 
 ### `src/evenBridge.js`
 Handles:
@@ -140,7 +140,6 @@ This verifies:
 - scoreboard normalization
 - live-game selection logic
 - play normalization
-- descending/ascending sorting
 - pagination
 - compact line formatting
 
@@ -186,7 +185,7 @@ evenhub-simulator http://localhost:5173
 Use Up, Down, Click, and Double Click in the simulator to verify:
 
 - tap cycles games
-- double tap toggles sort
+- double tap opens exit confirmation
 - swipe / scroll pages through the event list
 
 Remember: simulator behavior is helpful for layout and logic, but it is not identical to hardware.
@@ -195,7 +194,7 @@ Remember: simulator behavior is helpful for layout and logic, but it is not iden
 
 ## 8) Test on real G2 hardware
 
-Start the dev server on your machine’s LAN address:
+Start the dev server on your machine's LAN address:
 
 ```bash
 npm run dev
@@ -227,6 +226,9 @@ Now verify on hardware:
 - page flips feel correct
 - repeated updates do not flicker excessively
 - no unexpected text wrapping breaks the timeline
+- "Live Feed" badge glows green when game is live
+- glasses footer shows full text
+- glasses shows `v` arrow when more pages below
 
 ---
 
@@ -330,9 +332,10 @@ If you do not yet have the required access, use the Even Hub application / onboa
 This app is intentionally simple:
 
 - tap / click → next game
-- double tap → toggle sort order
+- double tap → exit confirmation dialog
 - scroll down → next play page
 - scroll up → previous play page
+- mouse wheel (browser) → scroll timeline
 
 ---
 
@@ -343,8 +346,10 @@ Verify all of these on hardware:
 - [ ] first page creates once and does not recreate every refresh
 - [ ] tap, double tap, swipe up, swipe down all work from glasses
 - [ ] ring input works the same way
-- [ ] descending and ascending timeline modes both render correctly
 - [ ] timeline paging does not drift or skip
-- [ ] scheduled games gracefully show “not started” state
-- [ ] finished games still show their event history
+- [ ] scheduled games gracefully show "not started" state
 - [ ] repeated refreshes do not error under normal network conditions
+- [ ] "Live Feed" badge glows green when game is live
+- [ ] glasses footer shows full text: `tap next • dbl tap exit • scroll pages`
+- [ ] glasses shows `v` arrow when more pages below
+- [ ] browser timeline scrolls with mouse wheel

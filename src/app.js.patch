@@ -1,0 +1,38 @@
+const scoreboard = await fetchScoreboard();
+      const allGames = normalizeGames(scoreboard);
+      
+      // Categorize games by status
+      const liveGames = allGames.filter((game) => game.gameStatus === 2);
+      const completedGames = allGames.filter((game) => game.gameStatus === 3);
+      
+      // Fetch upcoming games (today + tomorrow)
+      const upcomingGames = await fetchUpcomingGames(2);
+      const scheduledGames = upcomingGames.map((game) => ({ ...game, gameStatus: 1 }));
+      
+      // Build ordered list: live → completed → upcoming
+      state.games = [...liveGames, ...completedGames, ...scheduledGames];
+      
+      const hasLiveGame = liveGames.length > 0;
+
+      if (state.games.length === 0) {
+        // No games at all
+        state.selectedGameId = null;
+        state.selectedGameIndex = -1;
+        state.plays = [];
+        state.pageIndex = 0;
+      } else {
+        const selectedIndex = resolveSelectedGameIndex(state.games);
+        state.selectedGameIndex = selectedIndex;
+        state.selectedGameId = state.games[selectedIndex].gameId;
+        if (!keepPage) state.pageIndex = 0;
+        
+        const selectedGame = state.games[selectedIndex];
+        if (selectedGame.gameStatus !== 1) {
+          // Not an upcoming game, fetch plays
+          await refreshSelectedGamePlays();
+        } else {
+          state.plays = [];
+        }
+      }
+      
+      state.upcomingGames = [];

@@ -7,7 +7,7 @@
   "min_sdk_version": "0.0.9",
   "entrypoint": "index.html",
   "description": "Live NBA event timeline for Even G2 smart glasses.",
-  "tagline": "Scores, game state, and a descending or ascending play timeline.",
+  "tagline": "Live NBA scores, game state, and play-by-play timeline for G2 glasses.",
   "author": "Minna-Cross, OpenAI",
   "supported_languages": ["en"],
   "permissions": [

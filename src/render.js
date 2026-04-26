@@ -2,8 +2,7 @@ import {
   formatGameLabel,
   formatGameMeta,
   formatPageStatus,
-  formatPlayLine,
-  formatPlayLineGlasses
+  formatPlayLine
 } from './lib/formatters.js';
 import { SPLASH_DURATION_MS } from './lib/constants.js';
 import { pagedPlays, selectedGame } from './state.js';
@@ -23,7 +22,6 @@ export function buildView(state) {
   const headerLines = [];
   const bodyLines = [];
   const footerLines = [];
-  const glassesBodyLines = [];
 
   const dom = {
     connectionStatus: state.mockBridge
@@ -53,8 +51,6 @@ export function buildView(state) {
       `;
       bodyLines.push('Live feed unavailable.');
       bodyLines.push('Check proxy / network.');
-      glassesBodyLines.push('Live feed unavailable.');
-      glassesBodyLines.push('Check proxy / network.');
     } else if (state.upcomingGames.length) {
       dom.timelineClass += ' is-empty';
       dom.timelineHtml = `
@@ -65,11 +61,8 @@ export function buildView(state) {
       `;
       bodyLines.push('No games live right now.');
       bodyLines.push('Next scheduled matchups:');
-      glassesBodyLines.push('No games live right now.');
-      glassesBodyLines.push('Next scheduled matchups:');
       for (const upcoming of state.upcomingGames.slice(0, 3)) {
         bodyLines.push(formatUpcomingLine(upcoming));
-        glassesBodyLines.push(formatUpcomingLine(upcoming));
       }
     } else {
       dom.timelineClass += ' is-empty';
@@ -79,12 +72,11 @@ export function buildView(state) {
       `;
       bodyLines.push('No NBA games found in the live scoreboard feed.');
       bodyLines.push('Refresh later or check again on a game day.');
-      glassesBodyLines.push('No NBA games found in the live scoreboard feed.');
-      glassesBodyLines.push('Refresh later or check again on a game day.');
     }
 
-    footerLines.push('tap next - dbl sort - scroll pages');
-    dom.pageStatus = footerLines.join(' - ');
+    footerLines.push('tap next • dbl exit • scroll pages');
+    dom.pageStatus = footerLines.join(' • ');
+    dom.glassesFooter = 'tap next • dbl tap exit • scroll pages';
   } else {
     if (game.gameStatus === 2) {
       dom.summaryClass += ' is-live';
@@ -93,7 +85,10 @@ export function buildView(state) {
     }
 
     headerLines.push(`NBA Pulse  ${state.selectedGameIndex + 1}/${state.games.length}`);
-    headerLines.push(formatGameLabel(game));
+    
+    // Add mode indicator
+    const modeLabel = game.gameStatus === 2 ? 'LIVE' : game.gameStatus === 3 ? 'FINAL' : 'UPCOMING';
+    headerLines.push(`[${modeLabel}] ${formatGameLabel(game)}`);
     headerLines.push(formatGameMeta(game));
 
     dom.selectedGame = `${formatGameLabel(game)} — ${game.statusText}`;
@@ -103,15 +98,12 @@ export function buildView(state) {
       if (game.gameStatus === 1) {
         bodyLines.push('This game has not started yet.');
         bodyLines.push(game.statusText);
-        glassesBodyLines.push('This game has not started yet.');
-        glassesBodyLines.push(game.statusText);
         dom.timelineHtml = `
           <div class="empty-title">Game has not started yet</div>
           <div class="empty-copy">${escapeHtml(game.statusText)}</div>
         `;
       } else {
         bodyLines.push('No play-by-play events available yet.');
-        glassesBodyLines.push('No play-by-play events available yet.');
         dom.timelineHtml = `
           <div class="empty-title">No play-by-play yet</div>
           <div class="empty-copy">The feed is connected, but no events are available right now.</div>
@@ -120,7 +112,6 @@ export function buildView(state) {
     } else {
       for (const play of paged.items) {
         bodyLines.push(formatPlayLine(play));
-        glassesBodyLines.push(formatPlayLineGlasses(play));
       }
       dom.timelineHtml = '';
     }
@@ -135,17 +126,26 @@ export function buildView(state) {
         : 'Updated --'
     );
 
-    dom.pageStatus = footerLines.join(' - ');
+    dom.pageStatus = footerLines.join(' • ');
+    
+    // Glasses footer
+    dom.glassesFooter = 'tap next • dbl tap exit • scroll pages';
   }
 
   dom.timeline = bodyLines.join('\n');
+  
+  // Glasses body - add down arrow if more pages below
+  const glassesBody = bodyLines.join('\n');
+  const glassesBodyWithArrow = (game && paged.pageIndex < paged.totalPages - 1)
+    ? `${glassesBody}\nv`
+    : glassesBody;
 
   return {
     dom,
     glasses: {
       header: headerLines.join('\n'),
-      body: glassesBodyLines.join('\n'),
-      footer: footerLines.join(' - ')
+      body: glassesBodyWithArrow,
+      footer: dom.glassesFooter || footerLines.join('\n')
     }
   };
 }
@@ -173,7 +173,7 @@ function formatUpcomingLine(game) {
   const home = formatTeamLabel(game.home);
   const when = formatUpcomingTimeEt(game);
 
-  return when ? `${date}: ${away} @ ${home} - ${when}` : `${date}: ${away} @ ${home}`;
+  return when ? `${date}: ${away} @ ${home} • ${when}` : `${date}: ${away} @ ${home}`;
 }
 
 function formatDateEt(game) {
@@ -185,36 +185,64 @@ function formatDateEt(game) {
     }).format(new Date(game.startTimeUtc));
   }
 
-  return '';
+  return game.gameDate
+    ? new Date(`${game.gameDate}T00:00:00Z`).toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric'
+      })
+    : 'Soon';
+}
+
+function formatTeamLabel(team) {
+  const code = String(team?.code ?? '').trim();
+  if (!code || /^tbd$/i.test(code)) {
+    return team?.name ? shortenTeamLabel(team.name) : 'TBD';
+  }
+  if (code.includes('/')) {
+    return shortenTeamLabel(code);
+  }
+  return code;
+}
+
+function shortenTeamLabel(value) {
+  return String(value)
+    .replace(/Los Angeles/gi, 'LA')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function formatUpcomingTimeEt(game) {
   if (game.startTimeUtc) {
-    return new Intl.DateTimeFormat('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZone: 'America/New_York'
-    }).format(new Date(game.startTimeUtc));
+    return (
+      new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'America/New_York'
+      }).format(new Date(game.startTimeUtc)) + ' ET'
+    );
   }
 
-  return '';
+  return cleanUpcomingStatusText(game.statusText);
 }
 
-function formatTeamLabel(team) {
-  return team.code || team.market || team.name || 'Unknown';
-}
+function cleanUpcomingStatusText(statusText) {
+  const raw = String(statusText || '').trim();
+  if (!raw || /^tbd$/i.test(raw)) return '';
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  return raw
+    .replace(/^\d{1,2}\/\d{1,2}\s*-\s*/i, '')
+    .replace(/\s+EDT$/i, ' ET')
+    .replace(/\s+EST$/i, ' ET')
+    .trim();
 }
 
 function shouldShowSplash(state) {
-  return Date.now() - state.launchedAt < SPLASH_DURATION_MS;
+  return !state.error && Date.now() - state.launchedAt < SPLASH_DURATION_MS;
 }
 
 function buildSplashView(state) {
+  const connection = state.mockBridge ? 'Preview mode' : 'Even bridge online';
+
   return {
     dom: {
       connectionStatus: state.mockBridge
@@ -227,32 +255,69 @@ function buildSplashView(state) {
         <div class="empty-title">Welcome to NBA Pulse</div>
         <div class="empty-copy">Loading...</div>
       `,
-      pageStatus: 'tap next - dbl sort - scroll pages',
+      pageStatus: 'tap next • dbl exit • scroll pages',
       errorStatus: state.error || '',
       summaryClass: 'summary-card is-empty',
       timelineClass: 'timeline-card is-empty',
       footerClass: 'footer-card'
     },
     glasses: {
-      header: 'NBA PULSE\nGame Night Mode',
-      body: `Connected\n${state.mockBridge ? 'Browser preview' : 'Connected'}\n\nLoading...`,
-      footer: '🏀'
+      header: 'NBA PULSE',
+      body: 'Loading...',
+      footer: 'tap next • dbl tap exit • scroll pages'
     }
   };
 }
 
-function buildExitConfirmationView(state) {
-  const connection = state.mockBridge
-    ? 'Browser preview (mock bridge)'
-    : 'Connected to Even bridge';
+export function updateDom(dom, view) {
+  dom.connectionStatus.textContent = view.dom.connectionStatus;
+  dom.selectedGame.textContent = view.dom.selectedGame;
+  dom.selectedMeta.textContent = view.dom.selectedMeta;
+  dom.pageStatus.textContent = view.dom.pageStatus;
+  dom.errorStatus.textContent = view.dom.errorStatus;
 
+  const summaryCard = document.querySelector('.summary-card');
+  const timelineCard = document.querySelector('.timeline-card');
+  const footerCard = document.querySelector('.footer-card');
+
+  if (summaryCard) summaryCard.className = view.dom.summaryClass || 'summary-card';
+  if (timelineCard) timelineCard.className = view.dom.timelineClass || 'timeline-card';
+  if (footerCard) footerCard.className = view.dom.footerClass || 'footer-card';
+
+  if (view.dom.timelineHtml) {
+    dom.timeline.innerHTML = view.dom.timelineHtml;
+  } else {
+    dom.timeline.textContent = view.dom.timeline;
+  }
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Build view for exit confirmation state. This renders a minimal preview and glasses view.
+function buildExitConfirmationView(state) {
   return {
     dom: {
-      connectionStatus: connection,
-      selectedGame: 'NBA Pulse',
-      selectedMeta: 'Exit confirmation',
+      connectionStatus: state.mockBridge
+        ? 'Browser preview (mock bridge)'
+        : 'Connected to Even bridge',
+      selectedGame: 'Exit NBA Pulse?',
+      selectedMeta: 'Click to confirm • Scroll / double-click to cancel',
       timeline: '',
-      pageStatus: 'click exit - scroll cancel',
+      timelineHtml: `
+        <div class="empty-title">Exit confirmation</div>
+        <div class="empty-copy">
+          Double-click opened confirmation. Click to exit, or scroll /
+          double-click to stay in the app.
+        </div>
+      `,
+      pageStatus: 'click exit • scroll cancel',
       errorStatus: state.error || '',
       summaryClass: 'summary-card is-empty',
       timelineClass: 'timeline-card is-empty',
@@ -265,26 +330,5 @@ function buildExitConfirmationView(state) {
     }
   };
 }
-
-export function updateDom(dom, view) {
-  dom.connectionStatus.textContent = view.dom.connectionStatus;
-  dom.selectedGame.textContent = view.dom.selectedGame;
-  dom.selectedMeta.textContent = view.dom.selectedMeta;
-  dom.pageStatus.textContent = view.dom.pageStatus;
-  dom.errorStatus.textContent = view.dom.errorStatus;
-
-  if (view.dom.timelineHtml) {
-    dom.timeline.innerHTML = view.dom.timelineHtml;
-  } else {
-    dom.timeline.textContent = view.dom.timeline;
-  }
-
-  if (dom.summary) dom.summary.className = view.dom.summaryClass;
-  if (dom.timeline) dom.timeline.className = view.dom.timelineClass;
-  if (dom.footer) dom.footer.className = view.dom.footerClass;
-}
-
-
-
 
 
