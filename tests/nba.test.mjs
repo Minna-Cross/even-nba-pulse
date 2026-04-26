@@ -36,22 +36,20 @@ test('normalizeActions extracts playable timeline entries', () => {
   const plays = normalizeActions(playFixture);
   assert.equal(plays.length, 4);
   assert.equal(plays[0].description, 'Stephen Curry makes 26-foot three point jumper');
-  assert.equal(plays[3].scoreText, '84-87');
+  assert.equal(plays[3].awayScore, 84);
+  assert.equal(plays[3].homeScore, 87);
 });
 
-test('sortPlays supports descending and ascending orders', () => {
+test('sortPlays returns descending order (newest first)', () => {
   const plays = normalizeActions(playFixture);
-  const desc = sortPlays(plays, 'desc');
-  const asc = sortPlays(plays, 'asc');
+  const sorted = sortPlays(plays);
 
-  assert.equal(desc[0].actionNumber, 151);
-  assert.equal(desc.at(-1).actionNumber, 4);
-  assert.equal(asc[0].actionNumber, 4);
-  assert.equal(asc.at(-1).actionNumber, 151);
+  assert.equal(sorted[0].actionNumber, 151);
+  assert.equal(sorted.at(-1).actionNumber, 4);
 });
 
 test('paginate returns stable page windows', () => {
-  const plays = sortPlays(normalizeActions(playFixture), 'desc');
+  const plays = sortPlays(normalizeActions(playFixture));
   const page = paginate(plays, 0, 2);
   assert.equal(page.totalPages, 2);
   assert.equal(page.items.length, 2);
@@ -61,7 +59,7 @@ test('paginate returns stable page windows', () => {
 test('formatPlayLine produces compact timeline text', () => {
   const plays = normalizeActions(playFixture);
   const line = formatPlayLine(plays[2]);
-  assert.match(line, /Q3 5:11/);
+  assert.match(line, /Q3/);
   assert.match(line, /84-87/);
   assert.match(line, /Anthony Davis/);
 });

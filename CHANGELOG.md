@@ -2,6 +2,17 @@
 
 All notable changes to NBA Pulse for Even Hub.
 
+## [0.2.6] - 2026-04-26
+
+### Changed
+- **Version bump** for Even Hub release
+
+### Added
+- Complete documentation (README.md, GUIDE.md, RELEASE.md)
+- All tests passing (11/11)
+
+---
+
 ## [0.2.5] - 2026-04-26
 
 ### Added

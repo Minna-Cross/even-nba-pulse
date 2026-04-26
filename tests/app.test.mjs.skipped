@@ -19,15 +19,16 @@ function createButton() {
 
 function createDom() {
   return {
-    refreshButton: createButton(),
     nextGameButton: createButton(),
-    toggleSortButton: createButton(),
     connectionStatus: { textContent: '' },
     selectedGame: { textContent: '' },
     selectedMeta: { textContent: '' },
     timeline: { textContent: '' },
     pageStatus: { textContent: '' },
-    errorStatus: { textContent: '' }
+    errorStatus: { textContent: '' },
+    exitDialog: { addEventListener() {} },
+    exitCancelButton: createButton(),
+    exitConfirmButton: createButton()
   };
 }
 

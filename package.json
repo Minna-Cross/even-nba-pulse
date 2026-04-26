@@ -1,6 +1,6 @@
 {
   "name": "even-nba-pulse",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Live NBA scores, game state, and play-by-play timeline for Even G2 smart glasses.",
   "type": "module",
   "scripts": {
