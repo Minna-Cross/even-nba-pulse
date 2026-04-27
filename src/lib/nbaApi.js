@@ -35,7 +35,7 @@ function asNetworkErrorMessage(error, context = {}) {
   return message;
 }
 
-async function fetchJson(path, label, notFoundValue, fetchImpl = fetch) {
+async function fetchJson(path, label, notFoundValue, fetchImpl = fetch, { silent403 = false } = {}) {
   const url = buildApiUrl(path);
   const controller = new AbortController();
   const startedAt = now();
@@ -51,10 +51,20 @@ async function fetchJson(path, label, notFoundValue, fetchImpl = fetch) {
     }
     if (!response.ok) {
       const body = await response.text().catch(() => '');
+      // Suppress 403/404 errors for future dates—they're expected when NBA hasn't published yet
+      if (silent403 && (response.status === 403 || response.status === 404)) {
+        console.debug('[nbaApi]', label, 'returned', response.status, '(expected for future dates)');
+        return notFoundValue;
+      }
       throw new Error(`${label} request failed (${response.status})` + (body ? `: ${body.slice(0, 160)}` : ''));
     }
     return response.json();
   } catch (error) {
+    // Don't log expected 403s for future dates as errors
+    if (silent403 && /403|404/.test(error.message)) {
+      console.debug('[nbaApi]', label, 'failed (expected for future dates):', error.message.slice(0, 80));
+      return notFoundValue;
+    }
     console.error('[nbaApi]', { label, url, error });
     throw new Error(asNetworkErrorMessage(error, { label, url }));
   } finally {
@@ -70,11 +80,13 @@ export async function fetchScoreboard(fetchImpl = fetch) {
 
 export async function fetchScoreboardForDate(dateKey, fetchImpl = fetch) {
   // Scoreboard for a specific date (YYYYMMDD format) from NBA CDN via Worker
+  // Silent 403/404 for future dates—NBA hasn't published scoreboard files yet
   return fetchJson(
     `scoreboard/${dateKey}`,
     `scoreboard/${dateKey}`,
     { scoreboard: { games: [] } },
-    fetchImpl
+    fetchImpl,
+    { silent403: true }
   );
 }
 
