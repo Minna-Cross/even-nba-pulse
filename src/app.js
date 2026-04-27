@@ -14,10 +14,25 @@ const EVENT = {
   ABNORMAL_EXIT: 6
 };
 
+const TOUCH_SOURCE = {
+  DUMMY_NULL: 0,
+  GLASSES_R: 1,
+  RING: 2,
+  GLASSES_L: 3
+};
+
 export function getEvenEventType(event) {
   const textEvent = event?.textEvent;
   const sysEvent = event?.sysEvent;
   return textEvent?.eventType ?? sysEvent?.eventType;
+}
+
+export function isTouchFromRingOrGlasses(event) {
+  const sysEvent = event?.sysEvent;
+  const eventSource = sysEvent?.eventSource;
+  return eventSource === TOUCH_SOURCE.RING || 
+         eventSource === TOUCH_SOURCE.GLASSES_R || 
+         eventSource === TOUCH_SOURCE.GLASSES_L;
 }
 
 export function createApp(dom) {
@@ -158,13 +173,14 @@ export function createApp(dom) {
 
   async function handleEvenEvent(event) {
     const eventType = getEvenEventType(event);
+    const isTouch = isTouchFromRingOrGlasses(event);
 
     // Log event code to state for on-glasses debugging
     state.lastEventCode = eventType;
     state.eventLog = [...state.eventLog.slice(-9), { code: eventType, time: Date.now() }];
-    console.log('[EVENT] Code:', eventType, 'Log:', state.eventLog.length, 'items');
+    console.log('[EVENT] Code:', eventType, 'Touch:', isTouch, 'Log:', state.eventLog.length, 'items');
 
-    if (eventType == null) {
+    if (eventType == null && !isTouch) {
       console.warn('⚠️ Unknown event type:', event);
       return;
     }
@@ -186,15 +202,22 @@ export function createApp(dom) {
           closeExitConfirmation();
           break;
         default:
+          // Touch from ring/glasses also confirms exit
+          if (isTouch) {
+            await confirmExit();
+          }
           break;
       }
       return;
     }
 
+    // Normal mode: CLICK or touch from ring/glasses triggers next game
+    if (eventType === EVENT.CLICK || isTouch) {
+      await nextGame();
+      return;
+    }
+
     switch (eventType) {
-      case EVENT.CLICK:
-        await nextGame();
-        break;
       case EVENT.DOUBLE_CLICK:
         openExitConfirmation();
         break;
