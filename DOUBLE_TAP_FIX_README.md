@@ -67,45 +67,6 @@ if (eventType === EVENT.CLICK || isTouch) {
 }
 ```
 
-## Testing Instructions
-
-1. **Build the application**:
-   ```bash
-   npm run build
-   ```
-
-2. **Deploy to Even Realities G2 glasses**
-
-3. **Test gestures**:
-   - Single tap on ring/glasses → Should cycle to next game
-   - Double tap on ring/glasses → Should open exit confirmation
-   - Check console logs for event debugging
-
-4. **Expected console output**:
-   ```
-   [EVENT] Code: 0 Touch: true Log: 1 items
-   [RING/GLASSES DEBUG] EventSource: 2 EventType: 0
-   
-   [EVENT] Code: 3 Touch: false Log: 2 items  
-   [DOUBLE-TAP] Opening exit confirmation
-   ```
-
-## Hardware Considerations
-
-If double tap still doesn't work as expected:
-
-1. **Check ring firmware**: Ensure ring supports double tap gestures
-2. **Verify event mapping**: The debug logs will show what events are actually sent
-3. **Custom mapping**: If hardware sends different events, may need custom timing logic
-
-## Fallback Options
-
-If double tap isn't supported by hardware:
-
-1. **Implement custom double tap detection**: Add timing logic to detect two quick taps
-2. **Map long press to double tap**: If long press is available, remap it
-3. **Configuration option**: Add settings to customize exit gesture
-
 ## Files Modified
 
 - `src/app.js` - Enhanced event handling and debugging
