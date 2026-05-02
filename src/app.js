@@ -180,6 +180,12 @@ export function createApp(dom) {
     state.eventLog = [...state.eventLog.slice(-9), { code: eventType, time: Date.now() }];
     console.log('[EVENT] Code:', eventType, 'Touch:', isTouch, 'Log:', state.eventLog.length, 'items');
 
+    // Enhanced debugging for ring/glasses events
+    if (isTouch) {
+      const sysEvent = event?.sysEvent;
+      console.log('[RING/GLASSES DEBUG] EventSource:', sysEvent?.eventSource, 'EventType:', eventType);
+    }
+
     if (eventType == null && !isTouch) {
       console.warn('⚠️ Unknown event type:', event);
       return;
@@ -219,6 +225,7 @@ export function createApp(dom) {
 
     switch (eventType) {
       case EVENT.DOUBLE_CLICK:
+        console.log('[DOUBLE-TAP] Opening exit confirmation');
         openExitConfirmation();
         break;
       case EVENT.SCROLL_BOTTOM:
