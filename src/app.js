@@ -217,17 +217,20 @@ export function createApp(dom) {
       return;
     }
 
+    // Handle double tap first (even from touch devices)
+    if (eventType === EVENT.DOUBLE_CLICK) {
+      console.log('[DOUBLE-TAP] Opening exit confirmation');
+      openExitConfirmation();
+      return;
+    }
+
     // Normal mode: CLICK or touch from ring/glasses triggers next game
     if (eventType === EVENT.CLICK || isTouch) {
       await nextGame();
       return;
     }
-
+    // Handle remaining event types
     switch (eventType) {
-      case EVENT.DOUBLE_CLICK:
-        console.log('[DOUBLE-TAP] Opening exit confirmation');
-        openExitConfirmation();
-        break;
       case EVENT.SCROLL_BOTTOM:
         nextPage();
         break;

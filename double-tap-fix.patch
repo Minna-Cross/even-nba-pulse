@@ -1,14 +1,15 @@
-# Double Tap Exit Fix for Even Realities NBA Pulse
+## Critical Bug Fix
 
-## Problem
-Current implementation uses long press for exit functionality, but design requires double tap for exit.
+**Issue**: Double tap from ring/glasses was not working due to event handling priority conflict.
 
-## Solution
-Ensure EVENT.DOUBLE_CLICK (eventType: 3) properly triggers exit confirmation and add enhanced debugging.
+**Root Cause**: The event handler checked CLICK/touch events BEFORE DOUBLE_CLICK events. Since double taps from hardware have both `eventType: 3` AND `isTouch: true`, they were incorrectly treated as single taps.
+
+**Solution**: Reordered event handling to prioritize DOUBLE_CLICK detection before general CLICK/touch handling.
 
 ## Changes
 
 ### src/app.js
+- **Critical fix**: Reordered event handling to check DOUBLE_CLICK first
 - Enhanced debug logging to show exact event types and sources
 - Added explicit double tap handling confirmation
 - Improved event source identification
@@ -27,14 +28,32 @@ Ensure EVENT.DOUBLE_CLICK (eventType: 3) properly triggers exit confirmation and
      if (eventType == null && !isTouch) {
        console.warn('⚠️ Unknown event type:', event);
        return;
-@@ -221,6 +227,7 @@ export function createApp(dom) {
+@@ -155,6 +161,13 @@ export function createApp(dom) {
+       return;
+     }
+ 
++    // Handle double tap first (even from touch devices) - CRITICAL FIX
++    if (eventType === EVENT.DOUBLE_CLICK) {
++      console.log('[DOUBLE-TAP] Opening exit confirmation');
++      openExitConfirmation();
++      return;
++    }
++
+     // Normal mode: CLICK or touch from ring/glasses triggers next game
+     if (eventType === EVENT.CLICK || isTouch) {
+       await nextGame();
+@@ -162,11 +175,6 @@ export function createApp(dom) {
+     }
  
      switch (eventType) {
-       case EVENT.DOUBLE_CLICK:
-+        console.log('[DOUBLE-TAP] Opening exit confirmation');
-         openExitConfirmation();
+-      case EVENT.DOUBLE_CLICK:
+-        console.log('[DOUBLE-TAP] Opening exit confirmation');
+-        openExitConfirmation();
+-        break;
+-      case EVENT.SCROLL_BOTTOM:
+         nextPage();
          break;
-       case EVENT.SCROLL_BOTTOM:
+       case EVENT.SCROLL_TOP:
 ```
 
 ### Testing Instructions

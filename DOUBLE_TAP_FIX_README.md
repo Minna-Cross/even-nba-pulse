@@ -27,17 +27,45 @@ Touch events from ring/glasses are identified by `eventSource` field:
 - `TOUCH_EVENT_FROM_GLASSES_R` (1) 
 - `TOUCH_EVENT_FROM_GLASSES_L` (3)
 
-## Changes Made
+## Critical Bug Fix
 
-### 1. Enhanced Debugging (`src/app.js`)
-- Added detailed logging for ring/glasses events
-- Debug output shows exact event source and type
-- Double tap events are explicitly logged
+**Issue**: Double tap from ring/glasses was not working because of event handling priority.
 
-### 2. Event Handling
-- `EVENT.DOUBLE_CLICK` (3) → Opens exit confirmation
-- Single tap (`EVENT.CLICK` or touch) → Cycles to next game
-- Enhanced diagnostics to identify hardware mapping issues
+**Root Cause**: The original code checked for CLICK/touch events BEFORE checking for DOUBLE_CLICK events. Since double taps from hardware have both `eventType: 3` AND `isTouch: true`, they were being caught by the CLICK/touch condition and treated as single taps.
+
+**Solution**: Reordered event handling to check for DOUBLE_CLICK first, before the general CLICK/touch condition.
+
+### Code Changes
+
+**Before (buggy)**:
+```javascript
+// CLICK/touch handled first → double tap caught here
+if (eventType === EVENT.CLICK || isTouch) {
+  await nextGame();
+  return;
+}
+
+// DOUBLE_CLICK never reached for touch events
+case EVENT.DOUBLE_CLICK:
+  openExitConfirmation();
+  break;
+```
+
+**After (fixed)**:
+```javascript
+// DOUBLE_CLICK handled first (even from touch devices)
+if (eventType === EVENT.DOUBLE_CLICK) {
+  console.log('[DOUBLE-TAP] Opening exit confirmation');
+  openExitConfirmation();
+  return;
+}
+
+// Then handle CLICK/touch events
+if (eventType === EVENT.CLICK || isTouch) {
+  await nextGame();
+  return;
+}
+```
 
 ## Testing Instructions
 
