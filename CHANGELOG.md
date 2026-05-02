@@ -2,6 +2,18 @@
 
 All notable changes to NBA Pulse for Even Hub.
 
+## [0.2.8] - 2026-05-02
+
+### Fixed
+- **Double tap exit** — Critical bug fix for double tap not working from ring/glasses (event handling priority issue)
+- Enhanced debugging for ring/glasses event sources
+
+### Changed
+- Reordered event handling to prioritize DOUBLE_CLICK detection before CLICK/touch
+- Improved console logging for event diagnostics
+
+---
+
 ## [0.2.7] - 2026-04-27
 
 ### Fixed

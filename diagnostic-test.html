@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Event Diagnostic Test</title>
+    <script type="module">
+        import { connectEvenBridge, subscribeToEvenEvents } from './src/evenBridge.js';
+        
+        async function runDiagnostics() {
+            console.log('🔍 Running Event Diagnostics\n');
+            
+            const bridgeResult = await connectEvenBridge();
+            console.log('Bridge connected:', bridgeResult.mockBridge ? 'MOCK' : 'REAL');
+            
+            // Subscribe to all events
+            const unsubscribe = subscribeToEvenEvents(bridgeResult.bridge, (event) => {
+                console.log('📨 RAW EVENT RECEIVED:', JSON.stringify(event, null, 2));
+                
+                // Extract event details
+                const sysEvent = event?.sysEvent;
+                const textEvent = event?.textEvent;
+                
+                if (sysEvent) {
+                    console.log('🔧 SYS_EVENT:', {
+                        eventType: sysEvent.eventType,
+                        eventSource: sysEvent.eventSource,
+                        description: getEventDescription(sysEvent.eventType, sysEvent.eventSource)
+                    });
+                }
+                
+                if (textEvent) {
+                    console.log('🔧 TEXT_EVENT:', {
+                        eventType: textEvent.eventType,
+                        description: getEventDescription(textEvent.eventType)
+                    });
+                }
+                
+                console.log('---\n');
+            });
+            
+            console.log('✅ Listening for events...');
+            console.log('Try different gestures in the simulator and watch this console');
+            console.log('Press Ctrl+C to stop listening\n');
+            
+            // Keep the connection open
+            return unsubscribe;
+        }
+        
+        function getEventDescription(eventType, eventSource = null) {
+            const eventDescriptions = {
+                0: 'CLICK (Single tap)',
+                1: 'SCROLL_TOP',
+                2: 'SCROLL_BOTTOM', 
+                3: 'DOUBLE_CLICK (Double tap)',
+                4: 'FOREGROUND_ENTER',
+                5: 'FOREGROUND_EXIT',
+                6: 'ABNORMAL_EXIT',
+                7: 'SYSTEM_EXIT'
+            };
+            
+            const sourceDescriptions = {
+                1: 'GLASSES_R',
+                2: 'RING',
+                3: 'GLASSES_L'
+            };
+            
+            let description = eventDescriptions[eventType] || `Unknown event: ${eventType}`;
+            
+            if (eventSource !== null && eventSource !== undefined) {
+                description += ` from ${sourceDescriptions[eventSource] || `Unknown source: ${eventSource}`}`;
+            }
+            
+            return description;
+        }
+        
+        // Run diagnostics when page loads
+        window.addEventListener('load', async () => {
+            try {
+                await runDiagnostics();
+            } catch (error) {
+                console.error('Diagnostic failed:', error);
+            }
+        });
+    </script>
+</head>
+<body>
+    <h1>Event Diagnostic Tool</h1>
+    <p>Open browser console and use simulator gestures to see what events are sent</p>
+    <p>This will help diagnose why double tap might not be working</p>
+</body>
+</html>

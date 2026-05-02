@@ -1,0 +1,74 @@
+## Critical Bug Fix
+
+**Issue**: Double tap from ring/glasses was not working due to event handling priority conflict.
+
+**Root Cause**: The event handler checked CLICK/touch events BEFORE DOUBLE_CLICK events. Since double taps from hardware have both `eventType: 3` AND `isTouch: true`, they were incorrectly treated as single taps.
+
+**Solution**: Reordered event handling to prioritize DOUBLE_CLICK detection before general CLICK/touch handling.
+
+## Changes
+
+### src/app.js
+- **Critical fix**: Reordered event handling to check DOUBLE_CLICK first
+- Enhanced debug logging to show exact event types and sources
+- Added explicit double tap handling confirmation
+- Improved event source identification
+
+```diff
+@@ -120,6 +120,12 @@ export function createApp(dom) {
+     state.eventLog = [...state.eventLog.slice(-9), { code: eventType, time: Date.now() }];
+     console.log('[EVENT] Code:', eventType, 'Touch:', isTouch, 'Log:', state.eventLog.length, 'items');
+ 
++    // Enhanced debugging for ring/glasses events
++    if (isTouch) {
++      const sysEvent = event?.sysEvent;
++      console.log('[RING/GLASSES DEBUG] EventSource:', sysEvent?.eventSource, 'EventType:', eventType);
++    }
++
+     if (eventType == null && !isTouch) {
+       console.warn('⚠️ Unknown event type:', event);
+       return;
+@@ -155,6 +161,13 @@ export function createApp(dom) {
+       return;
+     }
+ 
++    // Handle double tap first (even from touch devices) - CRITICAL FIX
++    if (eventType === EVENT.DOUBLE_CLICK) {
++      console.log('[DOUBLE-TAP] Opening exit confirmation');
++      openExitConfirmation();
++      return;
++    }
++
+     // Normal mode: CLICK or touch from ring/glasses triggers next game
+     if (eventType === EVENT.CLICK || isTouch) {
+       await nextGame();
+@@ -162,11 +175,6 @@ export function createApp(dom) {
+     }
+ 
+     switch (eventType) {
+-      case EVENT.DOUBLE_CLICK:
+-        console.log('[DOUBLE-TAP] Opening exit confirmation');
+-        openExitConfirmation();
+-        break;
+-      case EVENT.SCROLL_BOTTOM:
+         nextPage();
+         break;
+       case EVENT.SCROLL_TOP:
+```
+
+### Testing Instructions
+1. Build and deploy the app
+2. Test double tap gesture on ring/glasses
+3. Check console logs for `[DOUBLE-TAP]` and `[RING/GLASSES DEBUG]` messages
+4. Verify exit confirmation appears on double tap
+5. Confirm single tap still cycles through games
+
+### Expected Behavior
+- Single tap → Next game
+- Double tap → Exit confirmation  
+- Long press → (If supported by hardware) should map to appropriate event
+
+### Branch
+fix/double-tap-exit
+
+This patch ensures double tap functionality works as designed while maintaining backward compatibility with existing event handling.

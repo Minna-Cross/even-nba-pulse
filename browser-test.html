@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Double Tap Test</title>
+    <script type="module">
+        import { createApp } from './src/app.js';
+        
+        // Mock DOM elements
+        function createMockDom() {
+            return {
+                connectionStatus: { textContent: '' },
+                selectedGame: { textContent: '' },
+                selectedMeta: { textContent: '' },
+                timeline: { textContent: '' },
+                pageStatus: { textContent: '' },
+                errorStatus: { textContent: '' },
+                nextGameButton: { 
+                    addEventListener: () => {},
+                    click: () => {}
+                },
+                exitDialog: { 
+                    addEventListener: () => {},
+                    showModal: () => console.log('Exit dialog shown'),
+                    close: () => console.log('Exit dialog closed'),
+                    open: false
+                },
+                exitCancelButton: { 
+                    addEventListener: () => {},
+                    click: () => {}
+                },
+                exitConfirmButton: { 
+                    addEventListener: () => {},
+                    click: () => {}
+                }
+            };
+        }
+        
+        // Mock event objects
+        function createMockEvent(eventType, eventSource = null) {
+            return {
+                sysEvent: {
+                    eventType,
+                    eventSource
+                }
+            };
+        }
+        
+        async function runTests() {
+            console.log('🧪 Running Double Tap Tests in Browser Environment\n');
+            
+            const dom = createMockDom();
+            const app = createApp(dom);
+            
+            // Mock the bridge and initialization
+            app.state = {
+                bridge: { __mock: true },
+                mockBridge: true,
+                eventLog: [],
+                confirmExitOpen: false,
+                visible: true,
+                loading: false,
+                error: ''
+            };
+            
+            // Test sequence
+            const tests = [
+                {
+                    name: 'Single Tap from Ring',
+                    event: createMockEvent(0, 2),
+                    expected: 'Should cycle games'
+                },
+                {
+                    name: 'Double Tap',
+                    event: createMockEvent(3),
+                    expected: 'Should open exit confirmation'
+                },
+                {
+                    name: 'Touch from Glasses',
+                    event: createMockEvent(0, 1),
+                    expected: 'Should cycle games'
+                }
+            ];
+            
+            for (const test of tests) {
+                console.log(`📋 ${test.name}`);
+                console.log(`   Expected: ${test.expected}`);
+                
+                const prevExitState = app.state.confirmExitOpen;
+                await app.handleEvenEvent(test.event);
+                
+                if (test.event.sysEvent.eventType === 3) {
+                    // Double tap should open exit confirmation
+                    if (app.state.confirmExitOpen) {
+                        console.log('   ✅ PASS: Exit confirmation opened');
+                    } else {
+                        console.log('   ❌ FAIL: Exit confirmation NOT opened');
+                    }
+                } else {
+                    // Other events should not affect exit confirmation
+                    if (app.state.confirmExitOpen === prevExitState) {
+                        console.log('   ✅ PASS: Exit state unchanged');
+                    } else {
+                        console.log('   ❌ FAIL: Exit state changed unexpectedly');
+                    }
+                }
+                console.log('');
+            }
+            
+            console.log('✅ All tests completed');
+        }
+        
+        // Run tests when page loads
+        window.addEventListener('load', runTests);
+    </script>
+</head>
+<body>
+    <h1>Double Tap Test Runner</h1>
+    <p>Open browser console to see test results</p>
+</body>
+</html>
