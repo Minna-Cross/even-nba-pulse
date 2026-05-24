@@ -54,13 +54,11 @@ export function buildView(state) {
     } else if (state.upcomingGames.length) {
       dom.timelineClass += ' is-empty';
       dom.timelineHtml = `
-        <div class="empty-title">No games live right now</div>
         <div class="upcoming-list">
           ${state.upcomingGames.slice(0, 3).map(renderUpcomingRow).join('')}
         </div>
       `;
-      bodyLines.push('No games live right now.');
-      bodyLines.push('Next scheduled matchups:');
+      bodyLines.push('Upcoming games:');
       for (const upcoming of state.upcomingGames.slice(0, 3)) {
         bodyLines.push(formatUpcomingLine(upcoming));
       }
@@ -173,7 +171,7 @@ function formatUpcomingLine(game) {
   const home = formatTeamLabel(game.home);
   const when = formatUpcomingTimeEt(game);
 
-  return when ? `${date}: ${away} @ ${home} • ${when}` : `${date}: ${away} @ ${home}`;
+  return `${date} · ${away} @ ${home}` + (when ? ` · ${when}` : '');
 }
 
 function formatDateEt(game) {
