@@ -52,9 +52,9 @@ body {
 #app {
   max-width: var(--page-max);
   margin: 0 auto;
-  padding: var(--space-6);
+  padding: var(--space-4);
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-4);
 }
 
 header {
@@ -166,7 +166,7 @@ dialog::backdrop {
   background: var(--panel);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-card);
-  padding: var(--space-5);
+  padding: var(--space-4);
   box-shadow: var(--shadow-lg);
 }
 
