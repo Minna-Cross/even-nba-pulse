@@ -130,21 +130,33 @@ export async function fetchScheduleForDate(dateKey, fetchImpl = fetch) {
 }
 
 export function normalizeGames(scoreboardJson) {
-  // NBA CDN structure (from Cloudflare Worker)
-  const games = scoreboardJson?.scoreboard?.games || [];
-  const gameDate = scoreboardJson?.scoreboard?.gameDate || '';
+  // ESPN scoreboard structure: top-level events[] (no leagues wrapper for scoreboard)
+  const events = scoreboardJson?.events || [];
 
-  return games.map((game) => ({
-    gameDate,
-    gameId: String(game.gameId),
-    gameStatus: Number(game.gameStatus ?? 0),
-    statusText: game.gameStatusText || game.gameEt || 'Status unavailable',
-    period: Number(game.period ?? 0),
-    clock: game.gameClock || '',
-    home: normalizeTeamNba(game.homeTeam),
-    away: normalizeTeamNba(game.awayTeam),
-    raw: game
-  }));
+  return events.map((event) => {
+    const competition = event.competitions?.[0] || {};
+    const competitors = competition.competitors || [];
+    const homeRaw = competitors.find((c) => c?.homeAway === 'home');
+    const awayRaw = competitors.find((c) => c?.homeAway === 'away');
+    const statusType = competition.status?.type || {};
+
+    let gameStatus;
+    if (statusType.state === 'in') gameStatus = 2;        // live
+    else if (statusType.completed || statusType.state === 'post') gameStatus = 3; // final
+    else gameStatus = 1;                                   // scheduled
+
+    return {
+      gameDate: event.date || '',
+      gameId: String(event.id || ''),
+      gameStatus,
+      statusText: statusType.detail || statusType.displayName || 'Unknown',
+      period: Number(competition.status?.period ?? 0),
+      clock: competition.status?.displayClock || '',
+      home: normalizeTeamEspn(homeRaw),
+      away: normalizeTeamEspn(awayRaw),
+      raw: event
+    };
+  });
 }
 
 function normalizeTeamNba(team) {
