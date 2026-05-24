@@ -23,10 +23,10 @@ export default {
     let targetUrl;
 
     if (path === '/nba/scoreboard') {
-      targetUrl = 'https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json';
+      targetUrl = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard';
     } else if (path.match(/^\/nba\/scoreboard\/\d{8}$/)) {
       const gameDate = path.split('/').pop();
-      targetUrl = `https://cdn.nba.com/static/json/liveData/scoreboard/scoreboard_${gameDate}.json`;
+      targetUrl = `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${gameDate}`;
     } else if (path.match(/^\/nba\/playbyplay\/[^/]+$/)) {
       const gameId = path.split('/').pop();
       targetUrl = `https://cdn.nba.com/static/json/liveData/playbyplay/playbyplay_${gameId}.json`;
@@ -54,6 +54,7 @@ export default {
       headers.set('access-control-allow-origin', ALLOW_ORIGIN);
       headers.set('access-control-allow-methods', 'GET,OPTIONS');
       headers.set('access-control-allow-headers', 'content-type');
+      headers.set('cache-control', 'public, s-maxage=5, stale-while-revalidate=10');
 
       console.log(JSON.stringify({
         at: new Date().toISOString(),

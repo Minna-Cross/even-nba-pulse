@@ -1,49 +1,86 @@
 {
-  "scoreboard": {
-    "gameDate": "2026-04-08",
-    "games": [
-      {
-        "gameId": "0022500123",
-        "gameStatus": 1,
-        "gameStatusText": "7:30 pm ET",
-        "period": 0,
-        "gameClock": "",
-        "homeTeam": {
-          "teamId": 1610612738,
-          "teamTricode": "BOS",
-          "teamCity": "Boston",
-          "teamName": "Celtics",
-          "score": 0
-        },
-        "awayTeam": {
-          "teamId": 1610612748,
-          "teamTricode": "MIA",
-          "teamCity": "Miami",
-          "teamName": "Heat",
-          "score": 0
+  "events": [
+    {
+      "id": "0022500123",
+      "date": "2026-04-08T19:30:00Z",
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "state": "pre",
+              "detail": "7:30 pm ET",
+              "completed": false
+            },
+            "period": 0,
+            "displayClock": ""
+          },
+          "competitors": [
+            {
+              "id": "1610612738",
+              "homeAway": "home",
+              "team": {
+                "id": "1610612738",
+                "abbreviation": "BOS",
+                "displayName": "Boston Celtics",
+                "name": "Celtics"
+              },
+              "score": "0"
+            },
+            {
+              "id": "1610612748",
+              "homeAway": "away",
+              "team": {
+                "id": "1610612748",
+                "abbreviation": "MIA",
+                "displayName": "Miami Heat",
+                "name": "Heat"
+              },
+              "score": "0"
+            }
+          ]
         }
-      },
-      {
-        "gameId": "0022500124",
-        "gameStatus": 2,
-        "gameStatusText": "Q3 05:11",
-        "period": 3,
-        "gameClock": "PT5M11.00S",
-        "homeTeam": {
-          "teamId": 1610612744,
-          "teamTricode": "GSW",
-          "teamCity": "Golden State",
-          "teamName": "Warriors",
-          "score": 87
-        },
-        "awayTeam": {
-          "teamId": 1610612747,
-          "teamTricode": "LAL",
-          "teamCity": "Los Angeles",
-          "teamName": "Lakers",
-          "score": 84
+      ]
+    },
+    {
+      "id": "0022500124",
+      "date": "2026-04-08T20:00:00Z",
+      "competitions": [
+        {
+          "status": {
+            "type": {
+              "state": "in",
+              "detail": "Q3 05:11",
+              "completed": false
+            },
+            "period": 3,
+            "displayClock": "5:11"
+          },
+          "competitors": [
+            {
+              "id": "1610612744",
+              "homeAway": "home",
+              "team": {
+                "id": "1610612744",
+                "abbreviation": "GSW",
+                "displayName": "Golden State Warriors",
+                "name": "Warriors"
+              },
+              "score": "87"
+            },
+            {
+              "id": "1610612747",
+              "homeAway": "away",
+              "team": {
+                "id": "1610612747",
+                "abbreviation": "LAL",
+                "displayName": "Los Angeles Lakers",
+                "name": "Lakers"
+              },
+              "score": "84"
+            }
+          ]
         }
-      }
-    ]
-  }
+      ]
+    }
+  ]
 }

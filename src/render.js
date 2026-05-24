@@ -92,7 +92,7 @@ export function buildView(state) {
     headerLines.push(formatGameMeta(game));
 
     dom.selectedGame = `${formatGameLabel(game)} — ${game.statusText}`;
-    dom.selectedMeta = `${game.away.score}-${game.home.score} • ${state.sortDirection === 'desc' ? 'Newest first' : 'Oldest first'}`;
+    dom.selectedMeta = `${game.away.score}-${game.home.score} · ${game.statusText}`;
 
     if (!state.plays.length) {
       if (game.gameStatus === 1) {
@@ -116,7 +116,7 @@ export function buildView(state) {
       dom.timelineHtml = '';
     }
 
-    footerLines.push(formatPageStatus(paged.pageIndex, paged.totalPages, state.sortDirection));
+    footerLines.push(`Page ${paged.pageIndex + 1}/${paged.totalPages}`);
     footerLines.push(
       state.lastUpdatedAt
         ? `Updated ${new Date(state.lastUpdatedAt).toLocaleTimeString([], {

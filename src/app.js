@@ -117,7 +117,11 @@ export function createApp(dom) {
   }
 
   async function nextGame() {
-    if (!state.games.length) return;
+    if (!state.games.length) {
+      state.error = 'No games available to navigate.';
+      render();
+      return;
+    }
     state.selectedGameIndex = (state.selectedGameIndex + 1) % state.games.length;
     state.selectedGameId = state.games[state.selectedGameIndex].gameId;
     state.pageIndex = 0;
@@ -286,18 +290,34 @@ export function createApp(dom) {
       });
   }
 
+  let prevGlassesView = null;
+
   function render() {
     const view = buildView(state);
     updateDom(dom, view);
     syncExitDialog();
-    pushGlassesView(state.bridge, state.started, view.glasses)
-      .then((started) => {
-        state.started = started;
-      })
-      .catch((error) => {
-        state.error = error instanceof Error ? error.message : String(error);
-        updateDom(dom, buildView(state));
-      });
+    // Throttle: only push to glasses if the glasses-relevant content changed
+    if (!shallowEqual(view.glasses, prevGlassesView)) {
+      prevGlassesView = view.glasses;
+      pushGlassesView(state.bridge, state.started, view.glasses)
+        .then((started) => {
+          state.started = started;
+        })
+        .catch((error) => {
+          state.error = error instanceof Error ? error.message : String(error);
+          updateDom(dom, buildView(state));
+        });
+    }
+  }
+
+  function shallowEqual(a, b) {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    return (
+      a.header === b.header &&
+      a.body === b.body &&
+      a.footer === b.footer
+    );
   }
 
   // Synchronize the state.confirmExitOpen with the native dialog element, opening or closing as needed.
