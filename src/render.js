@@ -82,12 +82,11 @@ export function buildView(state) {
       dom.summaryClass += ' is-scheduled';
     }
 
-    headerLines.push(`NBA Pulse  ${state.selectedGameIndex + 1}/${state.games.length}`);
-    
-    // Add mode indicator
-    const modeLabel = game.gameStatus === 2 ? 'LIVE' : game.gameStatus === 3 ? 'FINAL' : 'UPCOMING';
-    headerLines.push(`[${modeLabel}] ${formatGameLabel(game)}`);
-    headerLines.push(formatGameMeta(game));
+    headerLines.push(formatGameLabel(game));
+    const ts = game.gameStatus === 2 ? `LIVE ${game.away.score}-${game.home.score}` :
+      game.gameStatus === 3 ? 'FINAL' :
+      game.statusText;
+    if (ts) headerLines.push(ts);
 
     dom.selectedGame = `${formatGameLabel(game)} — ${game.statusText}`;
     dom.selectedMeta = `${game.away.score}-${game.home.score} · ${game.statusText}`;
