@@ -122,9 +122,9 @@ export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
 
 export async function fetchScheduleForDate(dateKey, fetchImpl = fetch) {
   return fetchJson(
-    `scoreboard/${dateKey}`,
     `schedule/${dateKey}`,
-    { scoreboard: { games: [] } },
+    `schedule/${dateKey}`,
+    { events: [] },
     fetchImpl
   );
 }
@@ -154,6 +154,18 @@ function normalizeTeamNba(team) {
     code: team.teamTricode || team.teamCode || 'TEAM',
     name: `${team.teamCity ?? ''} ${team.teamName ?? ''}`.trim() || 'Unknown Team',
     score: Number(team.score ?? 0)
+  };
+}
+
+function normalizeTeamEspn(competitor) {
+  // ESPN structure: { team: { id, abbreviation, displayName } }
+  const team = competitor?.team;
+  if (!team) return { id: '', code: 'TEAM', name: 'Unknown Team', score: 0 };
+  return {
+    id: String(team.id ?? ''),
+    code: team.abbreviation || team.teamName || 'TEAM',
+    name: team.displayName || team.name || 'Unknown Team',
+    score: Number(competitor.score ?? 0)
   };
 }
 
@@ -209,7 +221,10 @@ export async function fetchUpcomingGames(daysToFetch = 3, fetchImpl = fetch) {
       scoreboardResult.status === 'fulfilled'
         ? normalizeGames(scoreboardResult.value).filter((g) => g.gameStatus === 1)
         : [];
-    const scheduleGames = scheduleResult.status === 'fulfilled' ? extractScheduleGames(scheduleResult.value) : [];
+    const scheduleGames =
+      scheduleResult.status === 'fulfilled' && scheduleResult.value?.events?.length
+        ? extractScheduleGames(scheduleResult.value)
+        : [];
 
     for (const game of [...scoreboardGames, ...scheduleGames]) {
       if (!seenGameIds.has(game.gameId)) {
