@@ -177,20 +177,15 @@ function formatUpcomingLine(game) {
 }
 
 function formatDateEt(game) {
-  if (game.startTimeUtc) {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      timeZone: 'America/New_York'
-    }).format(new Date(game.startTimeUtc));
-  }
-
-  return game.gameDate
-    ? new Date(`${game.gameDate}T00:00:00Z`).toLocaleDateString([], {
-        month: 'short',
-        day: 'numeric'
-      })
-    : 'Soon';
+  const src = game.startTimeUtc || game.gameDate;
+  if (!src) return 'Soon';
+  const d = new Date(src);
+  if (isNaN(d.getTime())) return 'Soon';
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'America/New_York'
+  }).format(d);
 }
 
 function formatTeamLabel(team) {
@@ -212,15 +207,15 @@ function shortenTeamLabel(value) {
 }
 
 function formatUpcomingTimeEt(game) {
-  if (game.startTimeUtc) {
-    return (
-      new Intl.DateTimeFormat('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: 'America/New_York'
-      }).format(new Date(game.startTimeUtc)) + ' ET'
-    );
-  }
+  const src = game.startTimeUtc || game.gameDate;
+  if (!src) return '';
+  const d = new Date(src);
+  if (isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'America/New_York'
+  }).format(d) + ' ET';
 
   return cleanUpcomingStatusText(game.statusText);
 }
