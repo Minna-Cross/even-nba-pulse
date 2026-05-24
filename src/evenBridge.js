@@ -72,9 +72,9 @@ async function upgradeTextContainer(bridge, container, content) {
 
 function sanitizeBridgeView(view) {
   return {
-    header: sanitizeBridgeText(view.header, 400),
+    header: sanitizeBridgeText(view.header, 280),
     body: sanitizeBridgeText(view.body, 1500),
-    footer: sanitizeBridgeText(view.footer, 220)
+    footer: sanitizeBridgeText(view.footer, 80)
   };
 }
 
