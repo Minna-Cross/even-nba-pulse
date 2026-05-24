@@ -54,6 +54,7 @@ export default {
       headers.set('access-control-allow-origin', ALLOW_ORIGIN);
       headers.set('access-control-allow-methods', 'GET,OPTIONS');
       headers.set('access-control-allow-headers', 'content-type');
+      headers.set('cache-control', 'public, s-maxage=5, stale-while-revalidate=10');
 
       console.log(JSON.stringify({
         at: new Date().toISOString(),
