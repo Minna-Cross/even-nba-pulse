@@ -15,7 +15,8 @@
       "name": "network",
       "desc": "Fetches NBA data via Cloudflare Worker proxy (CORS-enabled).",
       "whitelist": [
-        "https://summer-tooth-2846.minnacross.workers.dev"
+        "https://summer-tooth-2846.minnacross.workers.dev",
+        "https://site.api.espn.com"
       ]
     }
   ]

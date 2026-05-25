@@ -1,8 +1,9 @@
-// Production: Cloudflare Worker proxy for all NBA data.
-// Worker adds CORS headers to NBA CDN responses.
+// Production: Cloudflare Worker proxy for scoreboard data.
+// ESPN summary is also used as a direct fallback for play-by-play when a stale proxy is still pointing at NBA CDN.
 // Set VITE_NBA_API_BASE to use custom proxy URL if needed.
 const NBA_PROXY_BASE = import.meta.env?.VITE_NBA_API_BASE || 'https://summer-tooth-2846.minnacross.workers.dev/nba';
 const API_BASE = NBA_PROXY_BASE.replace(/\/$/, '');
+const ESPN_SUMMARY_BASE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary';
 // Timeout for fetch requests in milliseconds. Can be configured via VITE_NBA_TIMEOUT_MS.
 const REQUEST_TIMEOUT_MS = Number(import.meta.env?.VITE_NBA_TIMEOUT_MS || 8000);
 // Use performance.now if available for higher resolution timing
@@ -113,8 +114,36 @@ export async function fetchScoreboardForDate(dateKey, fetchImpl = fetch) {
 }
 
 export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
-  // Use the app proxy for play-by-play so browser and glasses builds avoid CORS issues.
-  const url = `${NBA_PROXY_BASE}/playbyplay/${gameId}`;
+  const sources = [
+    {
+      label: 'playbyplay',
+      url: `${API_BASE}/playbyplay/${gameId}`,
+      notFoundValue: { game: { actions: [] } },
+      fallbackOnNotFound: true
+    },
+    {
+      label: 'ESPN summary',
+      url: `${ESPN_SUMMARY_BASE}?event=${encodeURIComponent(gameId)}`,
+      notFoundValue: { plays: [] }
+    }
+  ];
+
+  let firstError = null;
+  for (const source of sources) {
+    try {
+      return await fetchPlayByPlaySource(source, fetchImpl);
+    } catch (error) {
+      if (!firstError) firstError = error;
+      console.debug('[nbaApi]', source.label, 'fallback candidate failed:', error.message);
+    }
+  }
+
+  console.error('[nbaApi]', { label: 'playbyplay', error: firstError });
+  throw firstError;
+}
+
+async function fetchPlayByPlaySource(source, fetchImpl) {
+  const { label, url, notFoundValue, fallbackOnNotFound } = source;
   const controller = new AbortController();
   const startedAt = now();
   const timeoutId = globalThis.setTimeout(() => controller.abort('timeout'), REQUEST_TIMEOUT_MS);
@@ -125,18 +154,20 @@ export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
       signal: controller.signal
     });
     if (response.status === 404) {
-      return { game: { actions: [] } };
+      if (fallbackOnNotFound) {
+        throw new Error(formatHttpError('Play-by-play', response));
+      }
+      return notFoundValue;
     }
     if (!response.ok) {
       const body = await response.text().catch(() => '');
       throw new Error(formatHttpError('Play-by-play', response, body));
     }
     const data = await response.json();
-    console.debug('[nbaApi]', 'playbyplay', Math.round(now() - startedAt), 'ms', url);
+    console.debug('[nbaApi]', label, Math.round(now() - startedAt), 'ms', url);
     return data;
   } catch (error) {
-    console.error('[nbaApi]', { label: 'playbyplay', url, error });
-    throw new Error(asNetworkErrorMessage(error, { label: 'playbyplay', url }));
+    throw new Error(asNetworkErrorMessage(error, { label, url }));
   } finally {
     globalThis.clearTimeout(timeoutId);
   }

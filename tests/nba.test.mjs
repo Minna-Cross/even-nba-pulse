@@ -119,6 +119,43 @@ test('fetchPlayByPlay maps TypeError to network/cors guidance', async () => {
   );
 });
 
+test('fetchPlayByPlay falls back to ESPN summary when proxy is blocked', async () => {
+  const requestedUrls = [];
+  const fetchImpl = async (url) => {
+    requestedUrls.push(url);
+    if (url.includes('/playbyplay/')) {
+      return new Response('<HTML><HEAD><TITLE>Access Denied</TITLE></HEAD></HTML>', {
+        status: 403,
+        statusText: 'Forbidden'
+      });
+    }
+
+    return new Response(JSON.stringify({
+      plays: [
+        {
+          sequenceNumber: '9',
+          text: "Victor Wembanyama makes 27-foot three point jumper (De'Aaron Fox assists)",
+          awayScore: 0,
+          homeScore: 3,
+          period: { number: 1 },
+          clock: { displayValue: '11:36' }
+        }
+      ]
+    }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  };
+
+  const data = await fetchPlayByPlay('401873200', fetchImpl);
+
+  assert.equal(data.plays.length, 1);
+  assert.equal(data.plays[0].text, "Victor Wembanyama makes 27-foot three point jumper (De'Aaron Fox assists)");
+  assert.equal(requestedUrls.length, 2);
+  assert.match(requestedUrls[0], /\/playbyplay\/401873200$/);
+  assert.match(requestedUrls[1], /summary\?event=401873200$/);
+});
+
 test('fetchPlayByPlay does not leak HTML denial bodies', async () => {
   const fetchImpl = async () =>
     new Response('<HTML><HEAD><TITLE>Access Denied</TITLE></HEAD><BODY>blocked</BODY></HTML>', {
