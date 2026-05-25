@@ -63,7 +63,7 @@ const server = http.createServer((req, res) => {
   if (req.url === '/nba/scoreboard') {
     return proxyFetch(
       req.url,
-      'https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json',
+      'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard',
       res
     );
   }
@@ -73,7 +73,7 @@ const server = http.createServer((req, res) => {
     const gameDate = scoreboardByDateMatch[1];
     return proxyFetch(
       req.url,
-      `https://cdn.nba.com/static/json/liveData/scoreboard/scoreboard_${gameDate}.json`,
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${gameDate}`,
       res
     );
   }
@@ -83,7 +83,7 @@ const server = http.createServer((req, res) => {
     const gameId = playMatch[1];
     return proxyFetch(
       req.url,
-      `https://cdn.nba.com/static/json/liveData/playbyplay/playbyplay_${gameId}.json`,
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=${gameId}`,
       res
     );
   }

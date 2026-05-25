@@ -1,6 +1,6 @@
 # NBA proxy
 
-Use this when the browser/WebView cannot fetch `cdn.nba.com` directly because of network or CORS restrictions.
+Use this when the browser/WebView cannot fetch ESPN data directly because of network or CORS restrictions.
 
 ## Run locally
 

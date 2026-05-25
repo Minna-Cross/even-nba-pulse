@@ -35,6 +35,28 @@ function asNetworkErrorMessage(error, context = {}) {
   return message;
 }
 
+function looksLikeHtml(text) {
+  return /^\s*</.test(text) || /<\/?(html|head|body|title|h1)\b/i.test(text);
+}
+
+function formatHttpError(label, response, body = '') {
+  const statusText = response.statusText ? ` ${response.statusText}` : '';
+  const bodyText = String(body).trim();
+  if (!bodyText || looksLikeHtml(bodyText)) {
+    return `${label} request failed (${response.status}${statusText})`;
+  }
+
+  let detail = bodyText;
+  try {
+    const parsed = JSON.parse(bodyText);
+    detail = parsed.error || parsed.message || bodyText;
+  } catch {
+    detail = bodyText;
+  }
+
+  return `${label} request failed (${response.status}${statusText}): ${String(detail).slice(0, 160)}`;
+}
+
 async function fetchJson(path, label, notFoundValue, fetchImpl = fetch, { silent403 = false } = {}) {
   const url = buildApiUrl(path);
   const controller = new AbortController();
@@ -56,7 +78,7 @@ async function fetchJson(path, label, notFoundValue, fetchImpl = fetch, { silent
         console.debug('[nbaApi]', label, 'returned', response.status, '(expected for future dates)');
         return notFoundValue;
       }
-      throw new Error(`${label} request failed (${response.status})` + (body ? `: ${body.slice(0, 160)}` : ''));
+      throw new Error(formatHttpError(label, response, body));
     }
     return response.json();
   } catch (error) {
@@ -91,7 +113,7 @@ export async function fetchScoreboardForDate(dateKey, fetchImpl = fetch) {
 }
 
 export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
-  // Use Cloudflare Worker proxy for NBA CDN play-by-play (CORS-enabled)
+  // Use the app proxy for play-by-play so browser and glasses builds avoid CORS issues.
   const url = `${NBA_PROXY_BASE}/playbyplay/${gameId}`;
   const controller = new AbortController();
   const startedAt = now();
@@ -107,7 +129,7 @@ export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
     }
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      throw new Error(`Play-by-play request failed (${response.status})` + (body ? `: ${body.slice(0, 160)}` : ''));
+      throw new Error(formatHttpError('Play-by-play', response, body));
     }
     const data = await response.json();
     console.debug('[nbaApi]', 'playbyplay', Math.round(now() - startedAt), 'ms', url);
@@ -182,19 +204,37 @@ function normalizeTeamEspn(competitor) {
 }
 
 export function normalizeActions(playJson) {
-  // NBA CDN play-by-play structure: game.actions array
+  // ESPN summary structure: top-level plays[].
+  if (Array.isArray(playJson?.plays)) {
+    return playJson.plays
+      .filter((play) => play.text || play.shortDescription)
+      .map((play, index) => {
+        const sequence = Number(play.sequenceNumber ?? play.id ?? index);
+        return {
+          actionNumber: Number.isFinite(sequence) ? sequence : index,
+          period: Number(play.period?.number ?? play.period ?? 1),
+          clock: play.clock?.displayValue || play.clock || '',
+          description: play.text || play.shortDescription || '',
+          awayScore: play.awayScore ?? 0,
+          homeScore: play.homeScore ?? 0,
+          order: Number.isFinite(sequence) ? sequence : index
+        };
+      });
+  }
+
+  // NBA CDN play-by-play structure: game.actions array.
   const actions = playJson?.game?.actions || [];
-  
+
   return actions
-    .filter(action => action.description) // Skip events without descriptions
+    .filter((action) => action.description)
     .map((action, index) => ({
       actionNumber: action.actionNumber || index,
       period: action.period || 1,
-      clock: action.gameClock || '',
+      clock: action.gameClock || action.clock || '',
       description: action.description || '',
       awayScore: action.scoreAway ?? action.awayScore ?? 0,
       homeScore: action.scoreHome ?? action.homeScore ?? 0,
-      order: action.order ?? action.actionNumber ?? index
+      order: action.order ?? action.orderNumber ?? action.actionNumber ?? index
     }));
 }
 

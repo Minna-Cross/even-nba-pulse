@@ -1,4 +1,4 @@
-// Cloudflare Worker (ES Modules) for NBA CORS proxy
+// Cloudflare Worker (ES Modules) for NBA/ESPN CORS proxy
 // Routes: /nba/scoreboard, /nba/scoreboard/:date, /nba/playbyplay/:gameId, /nba/schedule/:date
 
 export default {
@@ -29,7 +29,7 @@ export default {
       targetUrl = `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${gameDate}`;
     } else if (path.match(/^\/nba\/playbyplay\/[^/]+$/)) {
       const gameId = path.split('/').pop();
-      targetUrl = `https://cdn.nba.com/static/json/liveData/playbyplay/playbyplay_${gameId}.json`;
+      targetUrl = `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=${gameId}`;
     } else if (path.match(/^\/nba\/schedule\/\d{8}$/)) {
       const dateKey = path.split('/').pop();
       targetUrl = `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${dateKey}`;
