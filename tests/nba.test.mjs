@@ -36,8 +36,41 @@ test('normalizeActions extracts playable timeline entries', () => {
   const plays = normalizeActions(playFixture);
   assert.equal(plays.length, 4);
   assert.equal(plays[0].description, 'Stephen Curry makes 26-foot three point jumper');
+  assert.equal(plays[0].clock, 'PT10M53.00S');
   assert.equal(plays[3].awayScore, 84);
   assert.equal(plays[3].homeScore, 87);
+});
+
+test('normalizeActions extracts ESPN summary plays', () => {
+  const plays = normalizeActions({
+    plays: [
+      {
+        id: '4018732009',
+        sequenceNumber: '9',
+        text: "Victor Wembanyama makes 27-foot three point jumper (De'Aaron Fox assists)",
+        awayScore: 0,
+        homeScore: 3,
+        period: { number: 1, displayValue: '1st Quarter' },
+        clock: { displayValue: '11:36' }
+      },
+      {
+        id: '40187320056',
+        sequenceNumber: '56',
+        text: 'Jared McCain enters the game for Cason Wallace',
+        awayScore: 8,
+        homeScore: 10,
+        period: { number: 1, displayValue: '1st Quarter' },
+        clock: { displayValue: '7:26' }
+      }
+    ]
+  });
+
+  assert.equal(plays.length, 2);
+  assert.equal(plays[0].actionNumber, 9);
+  assert.equal(plays[0].clock, '11:36');
+  assert.equal(plays[1].description, 'Jared McCain enters the game for Cason Wallace');
+  assert.equal(plays[1].awayScore, 8);
+  assert.equal(plays[1].homeScore, 10);
 });
 
 test('sortPlays returns descending order (newest first)', () => {
@@ -83,5 +116,59 @@ test('fetchPlayByPlay maps TypeError to network/cors guidance', async () => {
   await assert.rejects(
     () => fetchPlayByPlay('123', fetchImpl),
     /NBA feed unavailable \(network\/CORS\)/
+  );
+});
+
+test('fetchPlayByPlay falls back to ESPN summary when proxy is blocked', async () => {
+  const requestedUrls = [];
+  const fetchImpl = async (url) => {
+    requestedUrls.push(url);
+    if (url.includes('/playbyplay/')) {
+      return new Response('<HTML><HEAD><TITLE>Access Denied</TITLE></HEAD></HTML>', {
+        status: 403,
+        statusText: 'Forbidden'
+      });
+    }
+
+    return new Response(JSON.stringify({
+      plays: [
+        {
+          sequenceNumber: '9',
+          text: "Victor Wembanyama makes 27-foot three point jumper (De'Aaron Fox assists)",
+          awayScore: 0,
+          homeScore: 3,
+          period: { number: 1 },
+          clock: { displayValue: '11:36' }
+        }
+      ]
+    }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  };
+
+  const data = await fetchPlayByPlay('401873200', fetchImpl);
+
+  assert.equal(data.plays.length, 1);
+  assert.equal(data.plays[0].text, "Victor Wembanyama makes 27-foot three point jumper (De'Aaron Fox assists)");
+  assert.equal(requestedUrls.length, 2);
+  assert.match(requestedUrls[0], /\/playbyplay\/401873200$/);
+  assert.match(requestedUrls[1], /summary\?event=401873200$/);
+});
+
+test('fetchPlayByPlay does not leak HTML denial bodies', async () => {
+  const fetchImpl = async () =>
+    new Response('<HTML><HEAD><TITLE>Access Denied</TITLE></HEAD><BODY>blocked</BODY></HTML>', {
+      status: 403,
+      statusText: 'Forbidden'
+    });
+
+  await assert.rejects(
+    () => fetchPlayByPlay('401873200', fetchImpl),
+    (error) => {
+      assert.match(error.message, /Play-by-play request failed \(403 Forbidden\)/);
+      assert.doesNotMatch(error.message, /<HTML>|Access Denied|blocked/);
+      return true;
+    }
   );
 });

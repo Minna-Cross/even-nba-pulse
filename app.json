@@ -2,7 +2,7 @@
   "package_id": "com.openai.nbapulse",
   "edition": "202601",
   "name": "NBA Pulse",
-  "version": "0.2.84",
+  "version": "0.2.85",
   "min_app_version": "2.0.0",
   "min_sdk_version": "0.0.9",
   "entrypoint": "index.html",
@@ -15,7 +15,8 @@
       "name": "network",
       "desc": "Fetches NBA data via Cloudflare Worker proxy (CORS-enabled).",
       "whitelist": [
-        "https://summer-tooth-2846.minnacross.workers.dev"
+        "https://summer-tooth-2846.minnacross.workers.dev",
+        "https://site.api.espn.com"
       ]
     }
   ]

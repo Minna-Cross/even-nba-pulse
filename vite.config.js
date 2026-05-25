@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite';
 
-const scoreboardTarget = 'https://cdn.nba.com';
-const scheduleTarget = 'https://site.api.espn.com';
+const espnTarget = 'https://site.api.espn.com';
 
 export default defineConfig({
   server: {
@@ -9,17 +8,25 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api/nba/scoreboard': {
-        target: scoreboardTarget,
+        target: espnTarget,
         changeOrigin: true,
-        rewrite: () => '/static/json/liveData/scoreboard/todaysScoreboard_00.json'
+        rewrite: (path) => {
+          const match = path.match(/^\/api\/nba\/scoreboard\/(\d{8})$/);
+          return match
+            ? `/apis/site/v2/sports/basketball/nba/scoreboard?dates=${match[1]}`
+            : '/apis/site/v2/sports/basketball/nba/scoreboard';
+        }
       },
       '/api/nba/playbyplay': {
-        target: scoreboardTarget,
+        target: espnTarget,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/nba\/playbyplay\/([^/]+)$/, '/static/json/liveData/playbyplay/playbyplay_$1.json')
+        rewrite: (path) => path.replace(
+          /^\/api\/nba\/playbyplay\/([^/]+)$/,
+          '/apis/site/v2/sports/basketball/nba/summary?event=$1'
+        )
       },
       '/api/nba/schedule': {
-        target: scheduleTarget,
+        target: espnTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/nba\/schedule\/(\d{8})$/, '/apis/site/v2/sports/basketball/nba/scoreboard?dates=$1')
       }

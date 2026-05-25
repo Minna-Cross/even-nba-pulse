@@ -54,13 +54,11 @@ export function buildView(state) {
     } else if (state.upcomingGames.length) {
       dom.timelineClass += ' is-empty';
       dom.timelineHtml = `
-        <div class="empty-title">No games live right now</div>
         <div class="upcoming-list">
           ${state.upcomingGames.slice(0, 3).map(renderUpcomingRow).join('')}
         </div>
       `;
-      bodyLines.push('No games live right now.');
-      bodyLines.push('Next scheduled matchups:');
+      bodyLines.push('Upcoming games:');
       for (const upcoming of state.upcomingGames.slice(0, 3)) {
         bodyLines.push(formatUpcomingLine(upcoming));
       }
@@ -84,12 +82,11 @@ export function buildView(state) {
       dom.summaryClass += ' is-scheduled';
     }
 
-    headerLines.push(`NBA Pulse  ${state.selectedGameIndex + 1}/${state.games.length}`);
-    
-    // Add mode indicator
-    const modeLabel = game.gameStatus === 2 ? 'LIVE' : game.gameStatus === 3 ? 'FINAL' : 'UPCOMING';
-    headerLines.push(`[${modeLabel}] ${formatGameLabel(game)}`);
-    headerLines.push(formatGameMeta(game));
+    headerLines.push(formatGameLabel(game));
+    const ts = game.gameStatus === 2 ? `LIVE ${game.away.score}-${game.home.score}` :
+      game.gameStatus === 3 ? 'FINAL' :
+      game.statusText;
+    if (ts) headerLines.push(ts);
 
     dom.selectedGame = `${formatGameLabel(game)} — ${game.statusText}`;
     dom.selectedMeta = `${game.away.score}-${game.home.score} · ${game.statusText}`;
@@ -173,7 +170,7 @@ function formatUpcomingLine(game) {
   const home = formatTeamLabel(game.home);
   const when = formatUpcomingTimeEt(game);
 
-  return when ? `${date}: ${away} @ ${home} • ${when}` : `${date}: ${away} @ ${home}`;
+  return `${date} · ${away} @ ${home}` + (when ? ` · ${when}` : '');
 }
 
 function formatDateEt(game) {

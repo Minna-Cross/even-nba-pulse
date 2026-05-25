@@ -1,8 +1,9 @@
-// Production: Cloudflare Worker proxy for all NBA data.
-// Worker adds CORS headers to NBA CDN responses.
+// Production: Cloudflare Worker proxy for scoreboard data.
+// ESPN summary is also used as a direct fallback for play-by-play when a stale proxy is still pointing at NBA CDN.
 // Set VITE_NBA_API_BASE to use custom proxy URL if needed.
 const NBA_PROXY_BASE = import.meta.env?.VITE_NBA_API_BASE || 'https://summer-tooth-2846.minnacross.workers.dev/nba';
 const API_BASE = NBA_PROXY_BASE.replace(/\/$/, '');
+const ESPN_SUMMARY_BASE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary';
 // Timeout for fetch requests in milliseconds. Can be configured via VITE_NBA_TIMEOUT_MS.
 const REQUEST_TIMEOUT_MS = Number(import.meta.env?.VITE_NBA_TIMEOUT_MS || 8000);
 // Use performance.now if available for higher resolution timing
@@ -35,6 +36,28 @@ function asNetworkErrorMessage(error, context = {}) {
   return message;
 }
 
+function looksLikeHtml(text) {
+  return /^\s*</.test(text) || /<\/?(html|head|body|title|h1)\b/i.test(text);
+}
+
+function formatHttpError(label, response, body = '') {
+  const statusText = response.statusText ? ` ${response.statusText}` : '';
+  const bodyText = String(body).trim();
+  if (!bodyText || looksLikeHtml(bodyText)) {
+    return `${label} request failed (${response.status}${statusText})`;
+  }
+
+  let detail = bodyText;
+  try {
+    const parsed = JSON.parse(bodyText);
+    detail = parsed.error || parsed.message || bodyText;
+  } catch {
+    detail = bodyText;
+  }
+
+  return `${label} request failed (${response.status}${statusText}): ${String(detail).slice(0, 160)}`;
+}
+
 async function fetchJson(path, label, notFoundValue, fetchImpl = fetch, { silent403 = false } = {}) {
   const url = buildApiUrl(path);
   const controller = new AbortController();
@@ -56,7 +79,7 @@ async function fetchJson(path, label, notFoundValue, fetchImpl = fetch, { silent
         console.debug('[nbaApi]', label, 'returned', response.status, '(expected for future dates)');
         return notFoundValue;
       }
-      throw new Error(`${label} request failed (${response.status})` + (body ? `: ${body.slice(0, 160)}` : ''));
+      throw new Error(formatHttpError(label, response, body));
     }
     return response.json();
   } catch (error) {
@@ -91,8 +114,36 @@ export async function fetchScoreboardForDate(dateKey, fetchImpl = fetch) {
 }
 
 export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
-  // Use Cloudflare Worker proxy for NBA CDN play-by-play (CORS-enabled)
-  const url = `${NBA_PROXY_BASE}/playbyplay/${gameId}`;
+  const sources = [
+    {
+      label: 'playbyplay',
+      url: `${API_BASE}/playbyplay/${gameId}`,
+      notFoundValue: { game: { actions: [] } },
+      fallbackOnNotFound: true
+    },
+    {
+      label: 'ESPN summary',
+      url: `${ESPN_SUMMARY_BASE}?event=${encodeURIComponent(gameId)}`,
+      notFoundValue: { plays: [] }
+    }
+  ];
+
+  let firstError = null;
+  for (const source of sources) {
+    try {
+      return await fetchPlayByPlaySource(source, fetchImpl);
+    } catch (error) {
+      if (!firstError) firstError = error;
+      console.debug('[nbaApi]', source.label, 'fallback candidate failed:', error.message);
+    }
+  }
+
+  console.error('[nbaApi]', { label: 'playbyplay', error: firstError });
+  throw firstError;
+}
+
+async function fetchPlayByPlaySource(source, fetchImpl) {
+  const { label, url, notFoundValue, fallbackOnNotFound } = source;
   const controller = new AbortController();
   const startedAt = now();
   const timeoutId = globalThis.setTimeout(() => controller.abort('timeout'), REQUEST_TIMEOUT_MS);
@@ -103,18 +154,20 @@ export async function fetchPlayByPlay(gameId, fetchImpl = fetch) {
       signal: controller.signal
     });
     if (response.status === 404) {
-      return { game: { actions: [] } };
+      if (fallbackOnNotFound) {
+        throw new Error(formatHttpError('Play-by-play', response));
+      }
+      return notFoundValue;
     }
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      throw new Error(`Play-by-play request failed (${response.status})` + (body ? `: ${body.slice(0, 160)}` : ''));
+      throw new Error(formatHttpError('Play-by-play', response, body));
     }
     const data = await response.json();
-    console.debug('[nbaApi]', 'playbyplay', Math.round(now() - startedAt), 'ms', url);
+    console.debug('[nbaApi]', label, Math.round(now() - startedAt), 'ms', url);
     return data;
   } catch (error) {
-    console.error('[nbaApi]', { label: 'playbyplay', url, error });
-    throw new Error(asNetworkErrorMessage(error, { label: 'playbyplay', url }));
+    throw new Error(asNetworkErrorMessage(error, { label, url }));
   } finally {
     globalThis.clearTimeout(timeoutId);
   }
@@ -182,19 +235,37 @@ function normalizeTeamEspn(competitor) {
 }
 
 export function normalizeActions(playJson) {
-  // NBA CDN play-by-play structure: game.actions array
+  // ESPN summary structure: top-level plays[].
+  if (Array.isArray(playJson?.plays)) {
+    return playJson.plays
+      .filter((play) => play.text || play.shortDescription)
+      .map((play, index) => {
+        const sequence = Number(play.sequenceNumber ?? play.id ?? index);
+        return {
+          actionNumber: Number.isFinite(sequence) ? sequence : index,
+          period: Number(play.period?.number ?? play.period ?? 1),
+          clock: play.clock?.displayValue || play.clock || '',
+          description: play.text || play.shortDescription || '',
+          awayScore: play.awayScore ?? 0,
+          homeScore: play.homeScore ?? 0,
+          order: Number.isFinite(sequence) ? sequence : index
+        };
+      });
+  }
+
+  // NBA CDN play-by-play structure: game.actions array.
   const actions = playJson?.game?.actions || [];
-  
+
   return actions
-    .filter(action => action.description) // Skip events without descriptions
+    .filter((action) => action.description)
     .map((action, index) => ({
       actionNumber: action.actionNumber || index,
       period: action.period || 1,
-      clock: action.gameClock || '',
+      clock: action.gameClock || action.clock || '',
       description: action.description || '',
       awayScore: action.scoreAway ?? action.awayScore ?? 0,
       homeScore: action.scoreHome ?? action.homeScore ?? 0,
-      order: action.order ?? action.actionNumber ?? index
+      order: action.order ?? action.orderNumber ?? action.actionNumber ?? index
     }));
 }
 
